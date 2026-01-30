@@ -1,14 +1,21 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import OptimizedQRMessageBubble from '../../components/OptimizedQRMessageBubble';
 import { useAuth } from '../../config/authcontext.config';
+import { apptheme } from '../../utilities/appcolors';
 import { createOrGetChatRoom, getUserData, markMessagesAsRead, sendMessage, subscribeToMessages } from '../../utilities/messageUtils';
 
-const MessageBubble = memo(({ message, currentUserId }) => {
-  const isMyMessage = message.senderId === currentUserId;
+const MessageBubble = memo(({ message, currentUserId, onImagePress }) => {
+  const isMyMessage = String(message.senderId) === String(currentUserId);
+
+  // Debug log (remove later)
+  // console.log(`Msg ${message.id} | Sender: ${message.senderId} | Me: ${currentUserId} | isMine: ${isMyMessage}`);
 
   // Format timestamp
   const formatTime = (timestamp) => {
@@ -18,22 +25,36 @@ const MessageBubble = memo(({ message, currentUserId }) => {
   };
 
   return (
-    <View style={[
-      styles.messageBubble,
-      isMyMessage ? styles.myMessage : styles.theirMessage
-    ]}>
-      <Text style={[
-        styles.messageText,
-        isMyMessage && styles.myMessageText
+    <View style={styles.bubbleContainer}>
+      <View style={[
+        styles.messageBubble,
+        isMyMessage ? styles.myMessage : styles.theirMessage,
+        message.type === 'image' && styles.imageBubble
       ]}>
-        {message.text}
-      </Text>
-      <Text style={[
-        styles.timestamp,
-        isMyMessage && styles.myTimestamp
-      ]}>
-        {formatTime(message.timestamp)}
-      </Text>
+        {message.type === 'image' ? (
+          <TouchableOpacity onPress={() => onImagePress(message.imageUrl || message.text)}>
+            <Image
+              source={{ uri: message.imageUrl || message.text }}
+              style={styles.messageImage}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
+        ) : (
+          <Text style={[
+            styles.messageText,
+            isMyMessage ? styles.myMessageText : styles.theirMessageText
+          ]}>
+            {message.text}
+          </Text>
+        )}
+        <Text style={[
+          styles.timestamp,
+          isMyMessage && styles.myTimestamp,
+          message.type === 'image' && styles.imageTimestamp
+        ]}>
+          {formatTime(message.timestamp)}
+        </Text>
+      </View>
     </View>
   );
 }, (prevProps, nextProps) => {
@@ -54,7 +75,10 @@ export default function ChatScreen() {
   const [newMessage, setNewMessage] = useState('');
   const [chatRoomId, setChatRoomId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [otherUser, setOtherUser] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [saving, setSaving] = useState(false);
   const { user: currentUser } = useAuth();
   const flatListRef = useRef(null);
   const router = useRouter();
@@ -102,6 +126,100 @@ export default function ChatScreen() {
     }
   };
 
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets[0].uri) {
+        await uploadAndSendImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  const uploadAndSendImage = async (uri) => {
+    if (!chatRoomId) return;
+
+    try {
+      setUploading(true);
+
+      // Upload to Cloudinary
+      const formData = new FormData();
+      formData.append('file', {
+        uri,
+        type: 'image/jpeg',
+        name: 'upload.jpg',
+      });
+      formData.append('upload_preset', 'ANGLEAPP');
+      formData.append('cloud_name', 'dc2wu6xw9');
+
+      const response = await fetch(
+        'https://api.cloudinary.com/v1_1/dc2wu6xw9/image/upload',
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.secure_url) {
+        await sendMessage(chatRoomId, currentUser.uid, 'Image', {
+          type: 'image',
+          imageUrl: data.secure_url
+        });
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (error) {
+      console.error('Error sending image:', error);
+      Alert.alert('Error', 'Failed to send image');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSaveImage = async () => {
+    if (!selectedImage) return;
+
+    try {
+      setSaving(true);
+
+      // Request permission
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission denied', 'We need permission to save images to your gallery.');
+        return;
+      }
+
+      // Download file to temp location
+      const filename = selectedImage.split('/').pop() || 'image.jpg';
+      const fileUri = `${FileSystem.documentDirectory}${filename}`;
+
+      const downloadResub = await FileSystem.downloadAsync(selectedImage, fileUri);
+
+      if (downloadResub.status === 200) {
+        // Create asset and save to album
+        const asset = await MediaLibrary.createAssetAsync(downloadResub.uri);
+        await MediaLibrary.createAlbumAsync('Chat Images', asset, false);
+        Alert.alert('Success', 'Image saved to gallery');
+      } else {
+        throw new Error('Failed to download image');
+      }
+    } catch (error) {
+      console.error('Error saving image:', error);
+      Alert.alert('Error', 'Failed to save image');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (newMessage.trim() && chatRoomId) {
       const messageToSend = newMessage.trim();
@@ -127,7 +245,11 @@ export default function ChatScreen() {
         />
       );
     }
-    return <MessageBubble message={item} currentUserId={currentUser.uid} />;
+    return <MessageBubble
+      message={item}
+      currentUserId={currentUser.uid}
+      onImagePress={setSelectedImage}
+    />;
   }, [currentUser.uid]);
 
   // Memoized QR reveal handler
@@ -136,11 +258,11 @@ export default function ChatScreen() {
   }, []);
 
   // Memoized getItemLayout for constant offset calculation
-  const getItemLayout = useCallback((data, index) => ({
-    length: 340,
-    offset: 340 * index,
-    index,
-  }), []);
+  // const getItemLayout = useCallback((data, index) => ({
+  //   length: 340,
+  //   offset: 340 * index,
+  //   index,
+  // }), []);
 
   if (loading) {
     return (
@@ -157,10 +279,10 @@ export default function ChatScreen() {
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 5}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 3}
       enabled={true}
     >
-      <SafeAreaView style={[styles.container, { flex: 1 }]}>
+      <SafeAreaView style={[styles.container, { flex: 1 }]} edges={['top', 'left', 'right']}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -200,6 +322,17 @@ export default function ChatScreen() {
 
         {/* Input Container */}
         <View style={styles.inputContainer}>
+          <TouchableOpacity
+            onPress={pickImage}
+            style={styles.iconButton}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <ActivityIndicator size="small" color="#2196F3" />
+            ) : (
+              <MaterialIcons name="image" size={28} color={apptheme.blue} />
+            )}
+          </TouchableOpacity>
           <TextInput
             style={styles.input}
             value={newMessage}
@@ -229,6 +362,44 @@ export default function ChatScreen() {
             />
           </TouchableOpacity>
         </View>
+
+        {/* Full Screen Image Viewer Modal */}
+        <Modal
+          visible={!!selectedImage}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setSelectedImage(null)}
+        >
+          <View style={styles.modalBackground}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setSelectedImage(null)}
+            >
+              <MaterialIcons name="close" size={30} color="#fff" />
+            </TouchableOpacity>
+
+            <Image
+              source={{ uri: selectedImage }}
+              style={styles.fullImage}
+              resizeMode="contain"
+            />
+
+            <TouchableOpacity
+              style={styles.downloadButton}
+              onPress={handleSaveImage}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <MaterialIcons name="file-download" size={24} color="#fff" />
+                  <Text style={styles.downloadText}>Save to Gallery</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </Modal>
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
@@ -237,7 +408,8 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "orange",
+    backgroundColor: apptheme.pink,
+    paddingBottom: 20
   },
   loadingContainer: {
     flex: 1,
@@ -277,6 +449,17 @@ const styles = StyleSheet.create({
     padding: 16,
     flexGrow: 1,
   },
+  bubbleContainer: {
+    width: "100%",
+    flexDirection: 'row',
+    marginVertical: 4,
+  },
+  myBubbleContainer: {
+    justifyContent: 'flex-end',
+  },
+  theirBubbleContainer: {
+    justifyContent: 'flex-start',
+  },
   messageBubble: {
     maxWidth: '80%',
     padding: 12,
@@ -284,23 +467,24 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   myMessage: {
-    backgroundColor: 'red',
+    backgroundColor: apptheme.navy,
     alignSelf: 'flex-end',
     borderBottomRightRadius: 4,
-    color: "red"
   },
   theirMessage: {
-    backgroundColor: 'black',
+    backgroundColor: apptheme.teal,
     alignSelf: 'flex-start',
     borderBottomLeftRadius: 4,
-    color: "red"
   },
   messageText: {
     fontSize: 16,
-    color: '#000',
+    color: "#333",
   },
   myMessageText: {
-    color: "red",
+    color: "#fff",
+  },
+  theirMessageText: {
+    color: "#fff",
   },
   timestamp: {
     fontSize: 12,
@@ -313,22 +497,40 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flexDirection: 'row',
-    padding: 7,
-    backgroundColor: 'orange',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: apptheme.pink,
     alignItems: 'center',
-    // borderTopWidth: 1,
-    // borderTopColor: '#eee',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
   },
   input: {
     flex: 1,
     backgroundColor: '#f0f0f0',
     borderRadius: 15,
-    // paddingHorizontal: 16,
-    // paddingVertical: 8,
-    // marginRight: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 8,
     // maxHeight: 10,
     fontSize: 16,
     height: 50
+  },
+  iconButton: {
+    padding: 8,
+    marginRight: 4,
+  },
+  messageImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  imageBubble: {
+    padding: 6,
+  },
+  imageTimestamp: {
+    marginTop: 2,
+    marginRight: 4,
   },
   sendButton: {
     padding: 4,
@@ -351,5 +553,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     marginTop: 8,
+  },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: '100%',
+    height: '70%',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 1,
+    padding: 10,
+  },
+  downloadButton: {
+    position: 'absolute',
+    bottom: 50,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    alignItems: 'center',
+  },
+  downloadText: {
+    color: '#fff',
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -3,9 +3,9 @@ import { Link, useRouter } from "expo-router";
 import { useFormik } from "formik";
 import { useState } from "react";
 import {
-  Image,
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -16,8 +16,8 @@ import {
 } from "react-native";
 import { signUpValidation } from "../components/signupvalidation";
 import { useAuth } from "../config/authcontext.config";
-import { appStyles } from "../utilities/mystyles";
 import { apptheme } from "../utilities/appcolors";
+import { appStyles } from "../utilities/mystyles";
 
 export default function SignUp() {
   const { signUp } = useAuth();
@@ -38,10 +38,12 @@ export default function SignUp() {
   const { handleBlur, handleChange, handleSubmit, touched, errors, values } =
     useFormik({
       initialValues: {
+        fullname: "",
         username: "",
         email: "",
         password: "",
         passwordConfirmation: "",
+        phone: "",
       },
       onSubmit: async () => {
         setisLoading(true);
@@ -53,8 +55,12 @@ export default function SignUp() {
             setisLoading(false);
             return;
           }
+          Alert.alert(
+            "Account Created",
+            "A verification email has been sent to your email address. Please verify your email before logging in."
+          );
           setisLoading(false);
-          router.replace("/(tabs)/chats");
+          router.replace("/signin");
         } catch (err) {
           Alert.alert("Signup failed", "An unexpected error occurred");
           setisLoading(false);
@@ -79,17 +85,17 @@ export default function SignUp() {
           <Text style={appStyles.bodyText}>Create new account</Text>
 
           {/* create account with google */}
-              <View style={appStyles.googleSEC}>
-                    <TouchableOpacity style={appStyles.loginBtn}>
-                        <Image
-                            style={{
-                            width: 36,
-                            height: 36,
-                            }}
-                            source={require("../assets/images/google.png")}></Image>
-                            <Text style={appStyles.loginText}>Google</Text>
-                </TouchableOpacity>
-                </View>
+          <View style={appStyles.googleSEC}>
+            <TouchableOpacity style={appStyles.loginBtn}>
+              <Image
+                style={{
+                  width: 36,
+                  height: 36,
+                }}
+                source={require("../assets/images/google.png")}></Image>
+              <Text style={appStyles.loginText}>Google</Text>
+            </TouchableOpacity>
+          </View>
           {/* OR */}
           <View style={appStyles.orSec}>
             <View style={appStyles.line}></View>
@@ -122,7 +128,7 @@ export default function SignUp() {
               <Text style={appStyles.errorMessage}>{errors.username}</Text>
             )}
           </View>
-          <View style={appStyles.inputView}> 
+          <View style={appStyles.inputView}>
             <TextInput
               keyboardType="default"
               style={appStyles.inputText}
@@ -192,15 +198,15 @@ export default function SignUp() {
                   onChangeText={handleChange("passwordConfirmation")}
                   onBlur={handleBlur("passwordConfirmation")}
                 />
-              
-                  <TouchableOpacity onPress={togglePasswordVisibility2}>
-                    <MaterialIcons
-                      name={showcomPassword ? "visibility" : "visibility-off"}
-                      size={24}
-                      color="black"
-                    />
-                  </TouchableOpacity>
-              
+
+                <TouchableOpacity onPress={togglePasswordVisibility2}>
+                  <MaterialIcons
+                    name={showcomPassword ? "visibility" : "visibility-off"}
+                    size={24}
+                    color="black"
+                  />
+                </TouchableOpacity>
+
               </View>
 
               {errors.passwordConfirmation && touched.passwordConfirmation && (
@@ -227,7 +233,7 @@ export default function SignUp() {
                 {isLoading ? (
                   <ActivityIndicator size="small" color="white" />
                 ) : (
-                  <Text style={{ color: "white" }}>Create Account</Text>
+                  <Text style={{ color: "red" }}>Create Account</Text>
                 )}
               </TouchableOpacity>
             )}

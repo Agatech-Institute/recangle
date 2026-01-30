@@ -1,12 +1,13 @@
 import { BlurView } from 'expo-blur';
 import { memo, useCallback, useState } from 'react';
 import { Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { apptheme } from '../utilities/appcolors';
 
 /**
  * Optimized QRMessageBubble using base64 image instead of live SVG rendering
  * Memoized with strict prop comparison for maximum performance
  */
-const screenWidth = Dimensions.get('window').width
+// const screenWidth = Dimensions.get('window').width
 
 const OptimizedQRMessageBubble = memo(
   ({ message, currentUserId, onReveal }) => {
@@ -29,12 +30,7 @@ const OptimizedQRMessageBubble = memo(
     }, [isRevealed, message.id, onReveal]);
 
     return (
-      <View
-        style={[
-          styles.container,
-          isMyMessage ? styles.myMessageContainer : styles.theirMessageContainer,
-        ]}
-      >
+      <View style={styles.container}>
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={handleToggleReveal}
@@ -120,30 +116,26 @@ const styles = StyleSheet.create({
   container: {
     marginVertical: 8,
     paddingHorizontal: 12,
-    flexDirection: 'row',
     minHeight: 240,
-  },
-  myMessageContainer: {
-    justifyContent: 'flex-end',
-  },
-  theirMessageContainer: {
-    justifyContent: 'flex-start',
+    width: '100%',
   },
   messageBubble: {
     maxWidth: '75%',
     padding: 12,
     borderRadius: 16,
     alignItems: 'center',
-    backgroundColor: 'red',
+    alignSelf: 'flex-start', // Default
   },
 
   myMessage: {
-    backgroundColor: 'red',
+    backgroundColor: apptheme.navy,
     borderBottomRightRadius: 4,
+    alignSelf: 'flex-end',
   },
   theirMessage: {
-    backgroundColor: 'black',
+    backgroundColor: apptheme.teal,
     borderBottomLeftRadius: 4,
+    alignSelf: 'flex-start',
   },
   qrContainer: {
     justifyContent: 'center',
@@ -205,7 +197,7 @@ const styles = StyleSheet.create({
     color: '#333',
     textAlign: 'left',
     fontWeight: '500',
-    textAlign: "justify"
+    // textAlign: "justify"
   },
   revealedTextMy: {
     color: '#000',

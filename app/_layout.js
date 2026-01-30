@@ -1,6 +1,5 @@
 import { Stack } from "expo-router";
-import { useContext } from "react";
-import {AuthContext,AuthProvider} from "../config/authcontext.config"
+import {AuthProvider} from "../config/authcontext.config"
 
 
 

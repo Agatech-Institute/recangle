@@ -4,6 +4,7 @@ import {
     doc,
     getDoc,
     getDocs,
+    increment,
     onSnapshot,
     orderBy,
     query,
@@ -82,6 +83,7 @@ export const sendMessage = async (chatRoomId, senderId, text, options = {}) => {
             senderId,
             text,
             type, // Include message type
+            ...(options.imageUrl && { imageUrl: options.imageUrl }), // Include image URL if present
             timestamp: serverTimestamp(),
             read: false
         });
@@ -98,6 +100,12 @@ export const sendMessage = async (chatRoomId, senderId, text, options = {}) => {
                 lastMessage: text,
                 lastMessageTime: serverTimestamp(),
                 [`unreadCount.${otherUserId}`]: (chatData.unreadCount?.[otherUserId] || 0) + 1
+            });
+
+            // Increment messagesSent for the sender
+            const userRef = doc(db, 'users', senderId);
+            await updateDoc(userRef, {
+                messagesSent: increment(1)
             });
         }
     } catch (error) {

@@ -1,10 +1,7 @@
 export const apptheme = {
-    green:"#347433",
-    yellow:"#FFC107",
-    orange:"#FF6F3C",
-    maroon:"#B22222",
-    purple:"#62109F",
-    red:"#DC0E0E",
-    grey:"#E9E3DF"
+    pink:"#FDB5CE",
+    blue:"#132440",
+    navy:"#16476A",
+    teal:"#3B9797",
     
 }

@@ -7,11 +7,12 @@ import {ActivityIndicator} from "react-native";
 
 
 
-export default function _Layout(){
+export default function Layout(){
 
     const {user,isloading} = useAuth();
+    
     if(isloading){
-        return <ActivityIndicator size="large" color="black" />
+        return <ActivityIndicator size={"large"} color={"black"}  style={{flex:1,justifyContent:"center",alignItems:"center"}}/>
     }
     if(!user){
         return <Redirect href="signin" />

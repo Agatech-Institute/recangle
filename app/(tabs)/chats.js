@@ -4,6 +4,7 @@ import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View }
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from '../../config/authcontext.config';
 import { getUserChats, getUserData } from '../../utilities/messageUtils';
+import { apptheme } from '../../utilities/appcolors';
 
 const ChatItem = ({ item, currentUserId, onPress }) => {
   const [otherUser, setOtherUser] = useState(null);
@@ -156,7 +157,7 @@ export default function Chats() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: apptheme.pink,
   },
   loadingContainer: {
     flex: 1,
@@ -185,7 +186,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: {
-    color: 'red',
+    color: apptheme.pink,
     fontSize: 20,
     fontWeight: '600',
   },
@@ -239,7 +240,7 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: 1,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: apptheme.navy,
     marginLeft: 66,
   },
   emptyContainer: {

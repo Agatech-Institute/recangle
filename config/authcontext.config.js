@@ -1,5 +1,5 @@
-import { createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, sendEmailVerification } from 'firebase/auth';
+import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { db, auth as firebaseAuth } from "../config/firebase.config";
@@ -24,15 +24,21 @@ export const AuthProvider = ({ children }) => {
                         setUser({
                             uid: user.uid,
                             email: user.email,
+                            emailVerified: user.emailVerified,
                             username: userData.username || '',
-
+                            messagesSent: userData.messagesSent || 0,
+                            createdAt: userData.createdAt ? userData.createdAt.toDate() : new Date(),
                         });
                     } else {
-                        setUser({ uid: user.uid, email: user.email, username: '' });
+                        setUser({
+                            uid: user.uid,
+                            email: user.email,
+                            emailVerified: user.emailVerified,
+                            username: ''
+                        });
                     }
                 } catch (error) {
                     Alert.alert('Error fetching user data:', error);
-                    // setUser({ uid: user.uid, email: user.email, username: '' });
                 }
             } else {
                 setUser(null)
@@ -46,17 +52,32 @@ export const AuthProvider = ({ children }) => {
     const signUp = async ({ email, password, username }) => {
         let user;
         try {
+            // Check if username is already taken
+            const usersRef = collection(db, 'users');
+            const q = query(usersRef, where('username', '==', username));
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+                return { success: false, error: "Username already taken." };
+            }
+
             const response = await createUserWithEmailAndPassword(firebaseAuth, email, password);
             user = response.user;
+
             await setDoc(doc(db, 'users', user.uid), {
                 uid: user.uid,
                 username: username,
                 email: email,
+                messagesSent: 0,
                 createdAt: new Date()
             });
+
+            // Send verification email
+            await sendEmailVerification(user);
+
             return { success: true, user: user };
         } catch (error) {
-            Alert.alert('Signup error', error.message);
+            // Alert.alert('Signup error', error.message); // Let the component handle the alert
             return { success: false, error: error.message };
         }
     };
@@ -74,8 +95,20 @@ export const AuthProvider = ({ children }) => {
         }
     }
 
+    const resendVerificationEmail = async () => {
+        if (firebaseAuth.currentUser) {
+            try {
+                await sendEmailVerification(firebaseAuth.currentUser);
+                return { success: true };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+        return { success: false, error: "No user logged in" };
+    };
+
     return (
-        <AuthContext.Provider value={{ user, isloading, signUp, login, logout }}>
+        <AuthContext.Provider value={{ user, isloading, signUp, login, logout, resendVerificationEmail }}>
             {children}
         </AuthContext.Provider>
     )

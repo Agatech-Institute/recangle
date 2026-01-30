@@ -1,19 +1,10 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useState } from 'react';
+import { Alert,  ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import {useAuth} from "../../config/authcontext.config"
-const mockProfile = {
-  name: 'John Doe',
-  username: '@johndoe',
-  avatar: 'https://via.placeholder.com/150',
-  bio: 'Software Developer | Coffee Lover | Travel Enthusiast',
-  location: 'New York, USA',
-  stats: {
-    messages: 1234,
-    connections: 567,
-    joined: 'January 2025'
-  }
-};
+import { useAuth } from "../../config/authcontext.config";
+import { apptheme } from "../../utilities/appcolors";
+import { getUserChats } from '../../utilities/messageUtils';
 
 const SettingItem = ({ icon, title, value }) => (
   <TouchableOpacity style={styles.settingItem}>
@@ -28,46 +19,64 @@ const SettingItem = ({ icon, title, value }) => (
 
 export default function Profile() {
 
-  const {user,logout} = useAuth()
+  const { user, logout } = useAuth()
+  const [connections, setConnections] = useState(0);
+
+  useEffect(() => {
+    if (user?.uid) {
+      const unsubscribe = getUserChats(user.uid, (chats) => {
+        setConnections(chats.length);
+      });
+      return () => unsubscribe();
+    }
+  }, [user?.uid]);
 
   const handleSignout = async () => {
     try {
-      await logout
+      await logout()
     } catch (error) {
-      Alert.alert("an error occued loging out","might be network")
-      
+      Alert.alert("an error occued loging out", "might be network",error)
+
     }
   }
+
+  const formatDateJoined = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
 
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.container}>
         <ScrollView>
           <View style={styles.header}>
-            <Image source={{ uri: mockProfile.avatar }} style={styles.avatar} />
-            <Text style={styles.name}>{mockProfile.name}</Text>
-            <Text style={styles.username}>{mockProfile.username}</Text>
-            <Text style={styles.bio}>{mockProfile.bio}</Text>
+          <TouchableOpacity>
+               <MaterialIcons name="person" size={200} color="#666" />
+          </TouchableOpacity>
+            <Text style={styles.name}>{user?.email?.split('@')[0] || 'User'}</Text>
+            <Text style={styles.username}>{user?.username || '@username'}</Text>
+            <Text style={styles.bio}>Software Developer | Disc Jockey | Travel Enthusiast</Text>
             <View style={styles.locationContainer}>
               <MaterialIcons name="location-on" size={16} color="#666" />
-              <Text style={styles.location}>{mockProfile.location}</Text>
+              <Text style={styles.location}>Abuja, Nigeria</Text>
             </View>
           </View>
 
           <View style={styles.stats}>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{mockProfile.stats.messages}</Text>
+              <Text style={styles.statNumber}>{user?.messagesSent || 0}</Text>
               <Text style={styles.statLabel}>Messages</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{mockProfile.stats.connections}</Text>
+              <Text style={styles.statNumber}>{connections}</Text>
               <Text style={styles.statLabel}>Connections</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Joined</Text>
-              <Text style={styles.statValue}>{mockProfile.stats.joined}</Text>
+              <Text style={styles.statValue}>{formatDateJoined(user?.createdAt)}</Text>
             </View>
           </View>
 
@@ -79,7 +88,7 @@ export default function Profile() {
             <SettingItem icon="info" title="About" />
           </View>
 
-          <TouchableOpacity style={styles.logoutButton}>
+          <TouchableOpacity onPress={handleSignout} style={styles.logoutButton}>
             <MaterialIcons name="logout" size={24} color="#FF3B30" />
             <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
@@ -92,7 +101,7 @@ export default function Profile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: apptheme.pink,
   },
   header: {
     alignItems: 'center',
@@ -195,7 +204,7 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontSize: 16,
-    color: '#FF3B30',
+    color: apptheme.navy,
     marginLeft: 8,
     fontWeight: '500',
   },

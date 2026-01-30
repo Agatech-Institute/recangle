@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/anglelgc.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.djmanuwave.rectangle"
     },
     "web": {
       "output": "static",
@@ -44,6 +45,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "17d675a4-3916-41d8-9ed9-e086a6585c6d"
+      }
     }
   }
 }

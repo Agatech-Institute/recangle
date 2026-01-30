@@ -12,7 +12,7 @@ const QRMessageBubble = memo(({ message, currentUserId }) => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [animationValue] = useState(new Animated.Value(0));
   const isMyMessage = message.senderId === currentUserId;
-  const screenWidth = Dimensions.get('window').width;
+  // const screenWidth = Dimensions.get('window').width;
 
   // Format timestamp
   const formatTime = (timestamp) => {

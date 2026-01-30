@@ -5,6 +5,7 @@ import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, TouchableOpac
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from '../../config/authcontext.config';
 import { getAllUsers } from '../../utilities/messageUtils';
+import { apptheme } from '../../utilities/appcolors';
 
 const UserItem = ({ user, onPress }) => (
   <TouchableOpacity style={styles.userItem} onPress={onPress}>
@@ -111,7 +112,7 @@ export default function Users() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: apptheme.pink,
   },
   loadingContainer: {
     flex: 1,

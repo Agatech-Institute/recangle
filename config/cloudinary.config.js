@@ -4,7 +4,7 @@ import { Cloudinary } from "cloudinary-react-native";
 // Replace these placeholders with your actual Cloudinary credentials
 export const cld = new Cloudinary({
     cloud: {
-        cloudName: 'YOUR_CLOUD_NAME',
+        cloudName: "dc2wu6xw9",
     },
     url: {
         secure: true
@@ -12,4 +12,4 @@ export const cld = new Cloudinary({
 });
 
 // For unsigned uploads, you'll also need an Upload Preset
-export const CLOUDINARY_UPLOAD_PRESET = 'YOUR_UPLOAD_PRESET';
+export const CLOUDINARY_UPLOAD_PRESET = "ANGLEAPP";
