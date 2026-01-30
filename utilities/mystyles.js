@@ -1,6 +1,5 @@
-import { StyleSheet } from "react-native"
+import { Dimensions, StyleSheet } from "react-native";
 import { apptheme } from "../utilities/appcolors";
-import { Dimensions } from "react-native";
 
 
 const screenWidth = Dimensions.get("window")
@@ -8,61 +7,92 @@ const screenWidth = Dimensions.get("window")
 
 
 export const appStyles = StyleSheet.create({
-    wrapper:{
-        flex:1,
-        backgroundColor:"white"
+    wrapper: {
+        flex: 1,
+        backgroundColor: "white",
+        marginBottom:40,
+        marginTop:40
 
     },
+    errorMessage: {
+        color: "white",
+        fontSize: 12,
+       
+    },
     // the view holding the input field
-    inputView:{
-        paddingHorizontal:16,
-        padding:10
+    inputView: {
+        paddingHorizontal: 16,
+        padding: 5,
        
 
 
-    },
-    // border around the text input field
-    inputText:{
-        height:50,
-        width:"100%",
-        borderWidth: 1,
-        borderColor: apptheme.maroon,
-        borderRadius: 10,
-        fontSize: 16,
-        paddingHorizontal:10,
-        paddingVertical:3
 
     },
-    img2:{
-        width:200,
-        height:200
+    // password visibilty
+    eye: {
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+        width: "100%",
+        borderWidth: 1,
+        borderRadius: 10,
+        paddingHorizontal: 10,
+        borderColor: apptheme.teal
     },
-    logoView:{
-        display:"flex",
-        flexDirection:"row",
-        justifyContent:"center",
-        alignContent:"center"
-    },
-   loginBtn:{
+    inputpass: {
         height: 50,
-        width:"100%",
+        flex: 1,
+        paddingVertical: 3
+    },
+    // border around the text input field
+    inputText: {
+        height: 50,
+        width: "100%",
+        borderWidth: 1,
+        borderColor: apptheme.teal,
+        borderRadius: 10,
+        fontSize: 16,
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+        flex: 1,
+        color:"white"
+
+    },
+    img2: {
+        width: 200,
+        height: 200
+    },
+    bodyText: {
+        textAlign: "center"
+    },
+    logoView: {
+        display: "flex",
+        flexDirection: "row",
+        justifyContent: "center",
+        alignContent: "center",
+
+    },
+    loginBtn: {
+        height: 45,
+        width: "100%",
         display: "flex",
         flexDirection: "row",
         justifyContent: "center",
         alignItems: "center",
-        borderRadius:10,
-        backgroundColor:apptheme.yellow,
-        
+        borderRadius: 12,
+        backgroundColor: apptheme.pink
+
     },
-    opc:{
-        paddingHorizontal:20,
+    opc: {
+        paddingHorizontal: 20,
         // paddingVertical:20
-        
+
     },
-    loginText:{
-        fontSize:28,
-        fontWeight:"bold",
-        fontFamily:"MoistlyVengionsDemo-Regular"
+    loginText: {
+        fontSize: 19,
+        fontWeight: "700",
+        fontFamily: "MoistlyVengionsDemo-Regular",
+        color: "white"
     },
     orSec: {
         display: "flex",
@@ -88,27 +118,33 @@ export const appStyles = StyleSheet.create({
     //     gap: 16,
     //     backgroundColor: apptheme.yellow,
     //     borderRadius: 4,
-        
+
 
     // },
-    googleSEC:{
-        paddingHorizontal:20
+    googleSEC: {
+        paddingHorizontal: 20
     },
     ScrollViewContainer: {
         // flexGrow: 1,
         justifyContent: "space-between",
-        // marginBottom: 100000,
-    },
-    newHere:{
-        display:"flex",
-        flexDirection:"row",
-        justifyContent:"center",
-        alignItems:"center",
+        backgroundColor: "white",
+        
         
     },
-    newHereText:{
-        fontSize:22,
-        fontFamily:"Lemoncake Homemade"
+    newHere: {
+        display: "flex",
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
+        gap:10,
+       
+       
+
+    },
+    newHereText: {
+        fontSize: 22,
+        fontFamily: "Lemoncake Homemade",
+        color: apptheme.teal,
     }
 })
 

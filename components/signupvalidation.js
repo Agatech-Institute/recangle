@@ -9,7 +9,7 @@ export const signupValidation = yup.object({
     .matches(/\d/, "Password must contain at least one number.")
     .matches(/[!@#$%^&*]/, "Password must contain at least one special character.")
     .required("Password is required"),
-    passwordConfirmation: yup.string().required().oneOf([yup.ref("password"),null]),
+    passwordConfirmation: yup.string().required().oneOf([yup.ref("my cheif,password don't match"),null]),
     firstName: yup.string()
     .min(3,"First name must be at least 3 characters")
     .max(36,"First name must not be more than 36 characters")
