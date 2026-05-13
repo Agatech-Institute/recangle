@@ -149,7 +149,7 @@ export default function SignUp() {
                 <TextInput
                   keyboardType="email-address"
                   style={appStyles.inputText}
-                  placeholder="eg. example@gmail.com"
+                  placeholder="e.g example@gmail.com"
                   placeholderTextColor="#888"
                   value={values.email}
                   onChangeText={handleChange("email")}

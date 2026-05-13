@@ -19,7 +19,7 @@ export default function RootLayout() {
       />
      
       <Stack.Screen
-        name="signin"
+        name="index"
         options={{
           title:"signin",
           headerShown:false
