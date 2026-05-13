@@ -1,10 +1,11 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { FlashList } from '@shopify/flash-list';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import OptimizedQRMessageBubble from '../../components/OptimizedQRMessageBubble';
 import { useAuth } from '../../config/authcontext.config';
@@ -287,6 +288,9 @@ export default function ChatScreen() {
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color="#000" />
+            {otherUser?.profilePicture && (
+              <Image source={{ uri: otherUser.profilePicture }} style={styles.headerAvatar} />
+            )}
           </TouchableOpacity>
           <View style={styles.headerInfo}>
             <Text style={styles.headerTitle}>
@@ -299,11 +303,12 @@ export default function ChatScreen() {
         </View>
 
         {/* Messages List */}
-        <FlatList
+        <FlashList
           ref={flatListRef}
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
+          estimatedItemSize={100}
           // getItemLayout={getItemLayout}
           // initialNumToRender={7}
           // windowSize={5}
@@ -431,6 +436,14 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginRight: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginLeft: 8,
   },
   headerInfo: {
     flex: 1,

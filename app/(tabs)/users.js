@@ -1,20 +1,24 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from '../../config/authcontext.config';
-import { getAllUsers } from '../../utilities/messageUtils';
 import { apptheme } from '../../utilities/appcolors';
+import { getAllUsers } from '../../utilities/messageUtils';
 
 const UserItem = ({ user, onPress }) => (
   <TouchableOpacity style={styles.userItem} onPress={onPress}>
     <View style={styles.avatarContainer}>
-      <View style={styles.avatarPlaceholder}>
-        <Text style={styles.avatarText}>
-          {user.username ? user.username.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
-        </Text>
-      </View>
+      {user.profilePicture ? (
+        <Image source={{ uri: user.profilePicture }} style={styles.avatar} />
+      ) : (
+        <View style={styles.avatarPlaceholder}>
+          <Text style={styles.avatarText}>
+            {user.username ? user.username.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
+          </Text>
+        </View>
+      )}
     </View>
     <View style={styles.userInfo}>
       <Text style={styles.name}>{user.username || 'No username'}</Text>
@@ -50,7 +54,7 @@ export default function Users() {
     }
   };
 
-  const filteredUsers = users.filter(user =>
+  const filteredUsers = searchQuery.trim() === '' ? [] : users.filter(user =>
     (user.username && user.username.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -100,7 +104,9 @@ export default function Users() {
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListEmptyComponent={() => (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No users found</Text>
+              <Text style={styles.emptyText}>
+                {searchQuery.trim() === '' ? "Type to search users..." : "No users found"}
+              </Text>
             </View>
           )}
         />
@@ -149,6 +155,12 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     position: 'relative',
+    marginRight: 16,
+  },
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
   },
   avatarPlaceholder: {
     width: 50,
@@ -165,7 +177,6 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     flex: 1,
-    marginLeft: 16,
   },
   name: {
     fontSize: 16,

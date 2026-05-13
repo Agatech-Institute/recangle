@@ -1,5 +1,5 @@
 import { createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, sendEmailVerification } from 'firebase/auth';
-import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore';
+import { collection, doc, getDocs, query, setDoc, where,onSnapshot } from 'firebase/firestore';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { db, auth as firebaseAuth } from "../config/firebase.config";
@@ -12,41 +12,53 @@ export const AuthProvider = ({ children }) => {
     const [isloading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const config = onAuthStateChanged(firebaseAuth, async (user) => {
-            if (user) {
-                // Fetch user data from Firestore to get username
-                try {
-                    const userDocRef = doc(db, 'users', user.uid);
-                    const userDoc = await getDoc(userDocRef);
+        let unsubscribeUser;
 
-                    if (userDoc.exists()) {
-                        const userData = userDoc.data();
+        const unsubscribeAuth = onAuthStateChanged(firebaseAuth, async (user) => {
+            if (user) {
+                // Subscribe to user data in Firestore
+                const userDocRef = doc(db, 'users', user.uid);
+
+                unsubscribeUser = onSnapshot(userDocRef, (doc) => {
+                    if (doc.exists()) {
+                        const userData = doc.data();
                         setUser({
                             uid: user.uid,
                             email: user.email,
                             emailVerified: user.emailVerified,
-                            username: userData.username || '',
-                            messagesSent: userData.messagesSent || 0,
-                            createdAt: userData.createdAt ? userData.createdAt.toDate() : new Date(),
+                            ...userData,
+                            createdAt: userData.createdAt?.toDate?.() || new Date(),
                         });
                     } else {
+                        // Fallback if doc doesn't exist yet but auth does
                         setUser({
                             uid: user.uid,
                             email: user.email,
                             emailVerified: user.emailVerified,
-                            username: ''
                         });
                     }
-                } catch (error) {
-                    Alert.alert('Error fetching user data:', error);
-                }
+                    setIsLoading(false);
+                }, (error) => {
+                    console.error("Error listening to user data:", error);
+                    setIsLoading(false);
+                });
+
             } else {
-                setUser(null)
+                setUser(null);
+                setIsLoading(false);
+                if (unsubscribeUser) {
+                    unsubscribeUser();
+                }
             }
-            setIsLoading(false);
-        })
-        return () => config();
-    }, [])
+        });
+
+        return () => {
+            unsubscribeAuth();
+            if (unsubscribeUser) {
+                unsubscribeUser();
+            }
+        };
+    }, []);
 
     // signUp (exposed as `signUp` to match callers)
     const signUp = async ({ email, password, username }) => {

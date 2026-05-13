@@ -240,3 +240,19 @@ export const getAllUsers = async () => {
         throw error;
     }
 };
+
+/**
+ * Updates a user's profile data
+ * @param {string} userId - User ID
+ * @param {Object} data - Data to update
+ * @returns {Promise<void>}
+ */
+export const updateUserProfile = async (userId, data) => {
+    try {
+        const userRef = doc(db, 'users', userId);
+        await updateDoc(userRef, data);
+    } catch (error) {
+        console.error('Error updating user profile:', error);
+        throw error;
+    }
+};

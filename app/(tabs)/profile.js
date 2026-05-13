@@ -1,10 +1,11 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
-import { Alert,  ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../config/authcontext.config";
 import { apptheme } from "../../utilities/appcolors";
-import { getUserChats } from '../../utilities/messageUtils';
+import { getUserChats, updateUserProfile } from '../../utilities/messageUtils';
 
 const SettingItem = ({ icon, title, value }) => (
   <TouchableOpacity style={styles.settingItem}>
@@ -21,6 +22,60 @@ export default function Profile() {
 
   const { user, logout } = useAuth()
   const [connections, setConnections] = useState(0);
+  const [uploading, setUploading] = useState(false);
+
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
+
+      if (!result.canceled && result.assets[0].uri) {
+        await uploadImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  const uploadImage = async (uri) => {
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', {
+        uri,
+        type: 'image/jpeg',
+        name: 'upload.jpg',
+      });
+      formData.append('upload_preset', 'ANGLEAPP');
+      formData.append('cloud_name', 'dc2wu6xw9');
+
+      const response = await fetch(
+        'https://api.cloudinary.com/v1_1/dc2wu6xw9/image/upload',
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.secure_url) {
+        await updateUserProfile(user.uid, { profilePicture: data.secure_url });
+        Alert.alert('Success', 'Profile picture updated!');
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      Alert.alert('Error', 'Failed to upload image');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   useEffect(() => {
     if (user?.uid) {
@@ -35,7 +90,7 @@ export default function Profile() {
     try {
       await logout()
     } catch (error) {
-      Alert.alert("an error occued loging out", "might be network",error)
+      Alert.alert("an error occued loging out", "might be network", error)
 
     }
   }
@@ -51,9 +106,18 @@ export default function Profile() {
       <SafeAreaView style={styles.container}>
         <ScrollView>
           <View style={styles.header}>
-          <TouchableOpacity>
-               <MaterialIcons name="person" size={200} color="#666" />
-          </TouchableOpacity>
+            <TouchableOpacity onPress={pickImage} disabled={uploading}>
+              {user?.profilePicture ? (
+                <Image source={{ uri: user.profilePicture }} style={styles.avatar} />
+              ) : (
+                <MaterialIcons name="person" size={100} color="#666" style={styles.avatarPlaceholder} />
+              )}
+              {uploading && (
+                <View style={styles.uploadingOverlay}>
+                  <ActivityIndicator color="#fff" />
+                </View>
+              )}
+            </TouchableOpacity>
             <Text style={styles.name}>{user?.email?.split('@')[0] || 'User'}</Text>
             <Text style={styles.username}>{user?.username || '@username'}</Text>
             <Text style={styles.bio}>Software Developer | Disc Jockey | Travel Enthusiast</Text>
@@ -114,6 +178,20 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     marginBottom: 16,
+  },
+  avatarPlaceholder: {
+    marginBottom: 16,
+  },
+  uploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 16, // Match marginBottom of avatar
+    borderRadius: 50,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   name: {
     fontSize: 24,
