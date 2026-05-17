@@ -23,7 +23,7 @@ function Layout() {
       />
 
       <Stack.Screen
-        name="signin"
+        name="index"
         options={{
           title: "signin",
           headerShown: false

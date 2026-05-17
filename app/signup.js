@@ -52,6 +52,7 @@ export default function SignUp() {
           const { success, error } = await signUp(values);
           if (!success) {
             Alert.alert("Signup failed!", error || "Please try again");
+            console.error("Signup error:", error);
             setisLoading(false);
             return;
           }
@@ -221,7 +222,7 @@ export default function SignUp() {
                     style={appStyles.loginBtn}
                   >
                     {isLoading ? (
-                      <ActivityIndicator size="small" color={apptheme.teal} />
+                      <ActivityIndicator size="large" color={apptheme.teal} />
                     ) : (
                       <Text style={appStyles.loginText}>Create Account</Text>
                     )}

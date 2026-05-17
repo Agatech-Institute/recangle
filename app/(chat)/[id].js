@@ -1,79 +1,111 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { FlashList } from '@shopify/flash-list';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as ImagePicker from 'expo-image-picker';
-import * as MediaLibrary from 'expo-media-library';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import OptimizedQRMessageBubble from '../../components/OptimizedQRMessageBubble';
-import { useAuth } from '../../config/authcontext.config';
-import { apptheme } from '../../utilities/appcolors';
-import { createOrGetChatRoom, getUserData, markMessagesAsRead, sendMessage, subscribeToMessages } from '../../utilities/messageUtils';
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { FlashList } from "@shopify/flash-list";
+import * as FileSystem from "expo-file-system/legacy";
+import * as ImagePicker from "expo-image-picker";
+import * as MediaLibrary from "expo-media-library";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import OptimizedQRMessageBubble from "../../components/OptimizedQRMessageBubble";
+import { useAuth } from "../../config/authcontext.config";
+import { apptheme } from "../../utilities/appcolors";
+import {
+  createOrGetChatRoom,
+  getUserData,
+  markMessagesAsRead,
+  sendMessage,
+  subscribeToMessages,
+} from "../../utilities/messageUtils";
 
-const MessageBubble = memo(({ message, currentUserId, onImagePress }) => {
-  const isMyMessage = String(message.senderId) === String(currentUserId);
+const MessageBubble = memo(
+  ({ message, currentUserId, onImagePress }) => {
+    const isMyMessage = String(message.senderId) === String(currentUserId);
 
-  // Debug log (remove later)
-  // console.log(`Msg ${message.id} | Sender: ${message.senderId} | Me: ${currentUserId} | isMine: ${isMyMessage}`);
+    // Debug log (remove later)
+    // console.log(`Msg ${message.id} | Sender: ${message.senderId} | Me: ${currentUserId} | isMine: ${isMyMessage}`);
 
-  // Format timestamp
-  const formatTime = (timestamp) => {
-    if (!timestamp) return '';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+    // Format timestamp
+    const formatTime = (timestamp) => {
+      if (!timestamp) return "";
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      return date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    };
 
-  return (
-    <View style={styles.bubbleContainer}>
-      <View style={[
-        styles.messageBubble,
-        isMyMessage ? styles.myMessage : styles.theirMessage,
-        message.type === 'image' && styles.imageBubble
-      ]}>
-        {message.type === 'image' ? (
-          <TouchableOpacity onPress={() => onImagePress(message.imageUrl || message.text)}>
-            <Image
-              source={{ uri: message.imageUrl || message.text }}
-              style={styles.messageImage}
-              resizeMode="cover"
-            />
-          </TouchableOpacity>
-        ) : (
-          <Text style={[
-            styles.messageText,
-            isMyMessage ? styles.myMessageText : styles.theirMessageText
-          ]}>
-            {message.text}
+    return (
+      <View style={styles.bubbleContainer}>
+        <View
+          style={[
+            styles.messageBubble,
+            isMyMessage ? styles.myMessage : styles.theirMessage,
+            message.type === "image" && styles.imageBubble,
+          ]}
+        >
+          {message.type === "image" ? (
+            <TouchableOpacity
+              onPress={() => onImagePress(message.imageUrl || message.text)}
+            >
+              <Image
+                source={{ uri: message.imageUrl || message.text }}
+                style={styles.messageImage}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
+          ) : (
+            <Text
+              style={[
+                styles.messageText,
+                isMyMessage ? styles.myMessageText : styles.theirMessageText,
+              ]}
+            >
+              {message.text}
+            </Text>
+          )}
+          <Text
+            style={[
+              styles.timestamp,
+              isMyMessage && styles.myTimestamp,
+              message.type === "image" && styles.imageTimestamp,
+            ]}
+          >
+            {formatTime(message.timestamp)}
           </Text>
-        )}
-        <Text style={[
-          styles.timestamp,
-          isMyMessage && styles.myTimestamp,
-          message.type === 'image' && styles.imageTimestamp
-        ]}>
-          {formatTime(message.timestamp)}
-        </Text>
+        </View>
       </View>
-    </View>
-  );
-}, (prevProps, nextProps) => {
-  // Strict memoization - only re-render if core data changes
-  return (
-    prevProps.message.id === nextProps.message.id &&
-    prevProps.message.text === nextProps.message.text &&
-    prevProps.message.timestamp === nextProps.message.timestamp &&
-    prevProps.currentUserId === nextProps.currentUserId
-  );
-});
+    );
+  },
+  (prevProps, nextProps) => {
+    // Strict memoization - only re-render if core data changes
+    return (
+      prevProps.message.id === nextProps.message.id &&
+      prevProps.message.text === nextProps.message.text &&
+      prevProps.message.timestamp === nextProps.message.timestamp &&
+      prevProps.currentUserId === nextProps.currentUserId
+    );
+  },
+);
 
-MessageBubble.displayName = 'MessageBubble';
+MessageBubble.displayName = "MessageBubble";
 
 export default function ChatScreen() {
   const { id, username } = useLocalSearchParams();
   const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState("");
   const [chatRoomId, setChatRoomId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -83,18 +115,41 @@ export default function ChatScreen() {
   const { user: currentUser } = useAuth();
   const flatListRef = useRef(null);
   const router = useRouter();
+  const unsubscribeRef = useRef(null);
 
   useEffect(() => {
-    if (!currentUser || !id) return;
+    if (!currentUser || !id) {
+      console.warn("ChatScreen: currentUser or id is null");
+      return;
+    }
 
-    initializeChat();
+    let isMounted = true;
+
+    initializeChat().then((unsubscribe) => {
+      if (isMounted && unsubscribe) {
+        unsubscribeRef.current = unsubscribe;
+      }
+    });
 
     return () => {
-      // Cleanup will be handled by unsubscribe
+      isMounted = false;
+      if (
+        unsubscribeRef.current &&
+        typeof unsubscribeRef.current === "function"
+      ) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
     };
   }, [currentUser, id]);
 
   const initializeChat = async () => {
+    if (!currentUser) {
+      console.error("Error: currentUser is null during chat initialization");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -122,7 +177,7 @@ export default function ChatScreen() {
 
       return unsubscribe;
     } catch (error) {
-      console.error('Error initializing chat:', error);
+      console.error("Error initializing chat:", error);
       setLoading(false);
     }
   };
@@ -139,8 +194,8 @@ export default function ChatScreen() {
         await uploadAndSendImage(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image');
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick image");
     }
   };
 
@@ -152,35 +207,35 @@ export default function ChatScreen() {
 
       // Upload to Cloudinary
       const formData = new FormData();
-      formData.append('file', {
+      formData.append("file", {
         uri,
-        type: 'image/jpeg',
-        name: 'upload.jpg',
+        type: "image/jpeg",
+        name: "upload.jpg",
       });
-      formData.append('upload_preset', 'ANGLEAPP');
-      formData.append('cloud_name', 'dc2wu6xw9');
+      formData.append("upload_preset", "ANGLEAPP");
+      formData.append("cloud_name", "dc2wu6xw9");
 
       const response = await fetch(
-        'https://api.cloudinary.com/v1_1/dc2wu6xw9/image/upload',
+        "https://api.cloudinary.com/v1_1/dc2wu6xw9/image/upload",
         {
-          method: 'POST',
+          method: "POST",
           body: formData,
-        }
+        },
       );
 
       const data = await response.json();
 
       if (data.secure_url) {
-        await sendMessage(chatRoomId, currentUser.uid, 'Image', {
-          type: 'image',
-          imageUrl: data.secure_url
+        await sendMessage(chatRoomId, currentUser.uid, "Image", {
+          type: "image",
+          imageUrl: data.secure_url,
         });
       } else {
-        throw new Error('Upload failed');
+        throw new Error("Upload failed");
       }
     } catch (error) {
-      console.error('Error sending image:', error);
-      Alert.alert('Error', 'Failed to send image');
+      console.error("Error sending image:", error);
+      Alert.alert("Error", "Failed to send image");
     } finally {
       setUploading(false);
     }
@@ -194,28 +249,34 @@ export default function ChatScreen() {
 
       // Request permission
       const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission denied', 'We need permission to save images to your gallery.');
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission denied",
+          "We need permission to save images to your gallery.",
+        );
         return;
       }
 
       // Download file to temp location
-      const filename = selectedImage.split('/').pop() || 'image.jpg';
+      const filename = selectedImage.split("/").pop() || "image.jpg";
       const fileUri = `${FileSystem.documentDirectory}${filename}`;
 
-      const downloadResub = await FileSystem.downloadAsync(selectedImage, fileUri);
+      const downloadResub = await FileSystem.downloadAsync(
+        selectedImage,
+        fileUri,
+      );
 
       if (downloadResub.status === 200) {
         // Create asset and save to album
         const asset = await MediaLibrary.createAssetAsync(downloadResub.uri);
-        await MediaLibrary.createAlbumAsync('Chat Images', asset, false);
-        Alert.alert('Success', 'Image saved to gallery');
+        await MediaLibrary.createAlbumAsync("Chat Images", asset, false);
+        Alert.alert("Success", "Image saved to gallery");
       } else {
-        throw new Error('Failed to download image');
+        throw new Error("Failed to download image");
       }
     } catch (error) {
-      console.error('Error saving image:', error);
-      Alert.alert('Error', 'Failed to save image');
+      console.error("Error saving image:", error);
+      Alert.alert("Error", "Failed to save image");
     } finally {
       setSaving(false);
     }
@@ -224,11 +285,11 @@ export default function ChatScreen() {
   const handleSendMessage = async () => {
     if (newMessage.trim() && chatRoomId) {
       const messageToSend = newMessage.trim();
-      setNewMessage(''); // Clear immediately for better UX
+      setNewMessage(""); // Clear immediately for better UX
       try {
         await sendMessage(chatRoomId, currentUser.uid, messageToSend);
       } catch (error) {
-        console.error('Error sending message:', error);
+        console.error("Error sending message:", error);
         // Optional: restore text if sending failed
         // setNewMessage(messageToSend);
       }
@@ -236,22 +297,27 @@ export default function ChatScreen() {
   };
 
   // Memoized render callback - strict prop comparison
-  const renderItem = useCallback(({ item }) => {
-    if (item.type === 'qr') {
+  const renderItem = useCallback(
+    ({ item }) => {
+      if (item.type === "qr") {
+        return (
+          <OptimizedQRMessageBubble
+            message={item}
+            currentUserId={currentUser.uid}
+            onReveal={handleRevealQR}
+          />
+        );
+      }
       return (
-        <OptimizedQRMessageBubble
+        <MessageBubble
           message={item}
           currentUserId={currentUser.uid}
-          onReveal={handleRevealQR}
+          onImagePress={setSelectedImage}
         />
       );
-    }
-    return <MessageBubble
-      message={item}
-      currentUserId={currentUser.uid}
-      onImagePress={setSelectedImage}
-    />;
-  }, [currentUser.uid]);
+    },
+    [currentUser.uid],
+  );
 
   // Memoized QR reveal handler
   const handleRevealQR = useCallback((messageId, isRevealed) => {
@@ -278,23 +344,32 @@ export default function ChatScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 3}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 3}
       enabled={true}
     >
-      <SafeAreaView style={[styles.container, { flex: 1 }]} edges={['top', 'left', 'right']}>
+      <SafeAreaView
+        style={[styles.container, { flex: 1 }]}
+        edges={["top", "left", "right"]}
+      >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
             <MaterialIcons name="arrow-back" size={24} color="#000" />
             {otherUser?.profilePicture && (
-              <Image source={{ uri: otherUser.profilePicture }} style={styles.headerAvatar} />
+              <Image
+                source={{ uri: otherUser.profilePicture }}
+                style={styles.headerAvatar}
+              />
             )}
           </TouchableOpacity>
           <View style={styles.headerInfo}>
             <Text style={styles.headerTitle}>
-              {otherUser?.username || username || 'Chat'}
+              {otherUser?.username || username || "Chat"}
             </Text>
             {otherUser?.email && (
               <Text style={styles.headerSubtitle}>{otherUser.email}</Text>
@@ -316,11 +391,15 @@ export default function ChatScreen() {
           // updateCellsBatchingPeriod={30}
           removeClippedSubviews={Platform.OS === "android"}
           contentContainerStyle={styles.messageList}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          onContentSizeChange={() =>
+            flatListRef.current?.scrollToEnd({ animated: true })
+          }
           ListEmptyComponent={() => (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No messages yet</Text>
-              <Text style={styles.emptySubtext}>Send a message to start the conversation</Text>
+              <Text style={styles.emptySubtext}>
+                Send a message to start the conversation
+              </Text>
             </View>
           )}
         />
@@ -342,7 +421,10 @@ export default function ChatScreen() {
             style={styles.input}
             value={newMessage}
             onChangeText={(text) => {
-              const words = text.trim().split(/\s+/).filter(word => word.length > 0);
+              const words = text
+                .trim()
+                .split(/\s+/)
+                .filter((word) => word.length > 0);
               if (words.length <= 50) {
                 setNewMessage(text);
               }
@@ -356,7 +438,7 @@ export default function ChatScreen() {
             onPress={handleSendMessage}
             style={[
               styles.sendButton,
-              !newMessage.trim() && styles.sendButtonDisabled
+              !newMessage.trim() && styles.sendButtonDisabled,
             ]}
             disabled={!newMessage.trim()}
           >
@@ -414,30 +496,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: apptheme.pink,
-    paddingBottom: 20
+    paddingBottom: 20,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
   },
   backButton: {
     marginRight: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   headerAvatar: {
     width: 32,
@@ -450,12 +532,12 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#7d0303',
+    fontWeight: "600",
+    color: "#7d0303",
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginTop: 2,
   },
   messageList: {
@@ -464,29 +546,29 @@ const styles = StyleSheet.create({
   },
   bubbleContainer: {
     width: "100%",
-    flexDirection: 'row',
+    flexDirection: "row",
     marginVertical: 4,
   },
   myBubbleContainer: {
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
   theirBubbleContainer: {
-    justifyContent: 'flex-start',
+    justifyContent: "flex-start",
   },
   messageBubble: {
-    maxWidth: '80%',
+    maxWidth: "80%",
     padding: 12,
     borderRadius: 16,
     marginVertical: 4,
   },
   myMessage: {
     backgroundColor: apptheme.navy,
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     borderBottomRightRadius: 4,
   },
   theirMessage: {
     backgroundColor: apptheme.teal,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     borderBottomLeftRadius: 4,
   },
   messageText: {
@@ -501,32 +583,32 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
     marginTop: 4,
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
   },
   myTimestamp: {
-    color: '#e3f2fd',
+    color: "#e3f2fd",
   },
   inputContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: 10,
     paddingVertical: 8,
     backgroundColor: apptheme.pink,
-    alignItems: 'center',
+    alignItems: "center",
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
+    borderTopColor: "rgba(0,0,0,0.05)",
   },
   input: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
     borderRadius: 15,
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginRight: 8,
     // maxHeight: 10,
     fontSize: 16,
-    height: 50
+    height: 50,
   },
   iconButton: {
     padding: 8,
@@ -553,51 +635,51 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingVertical: 60,
   },
   emptyText: {
     fontSize: 16,
-    color: '#890000',
-    fontWeight: '600',
+    color: "#890000",
+    fontWeight: "600",
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: "#999",
     marginTop: 8,
   },
   modalBackground: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.9)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   fullImage: {
-    width: '100%',
-    height: '70%',
+    width: "100%",
+    height: "70%",
   },
   closeButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 50,
     right: 20,
     zIndex: 1,
     padding: 10,
   },
   downloadButton: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 50,
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    flexDirection: "row",
+    backgroundColor: "rgba(255,255,255,0.2)",
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 25,
-    alignItems: 'center',
+    alignItems: "center",
   },
   downloadText: {
-    color: '#fff',
+    color: "#fff",
     marginLeft: 8,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
