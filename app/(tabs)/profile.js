@@ -132,7 +132,7 @@ export default function Profile() {
                 />
               ) : (
                 <MaterialIcons
-                  name="person"
+                  name="circle"
                   size={100}
                   color="#666"
                   style={styles.avatarPlaceholder}
@@ -144,10 +144,10 @@ export default function Profile() {
                 </View>
               )}
             </TouchableOpacity>
-            <Text style={styles.name}>
+            {/* <Text style={styles.name}>
               {user?.email?.split("@")[0] || "User"}
-            </Text>
-            <Text style={styles.username}>{user?.username || "@username"}</Text>
+            </Text> */}
+            <Text style={styles.username}>{user?.username || "@username".toUpperCase()}</Text>
             <Text style={styles.bio}>
               Software Developer | Disc Jockey | Travel Enthusiast
             </Text>
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   username: {
-    fontSize: 16,
+    fontSize: 36,
     color: "#666",
     marginTop: 4,
   },
