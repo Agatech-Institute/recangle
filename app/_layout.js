@@ -1,46 +1,49 @@
-import { Stack } from "expo-router";
-import {AuthProvider} from "../config/authcontext.config"
+import { Stack,SplashScreen } from "expo-router";
+import {  } from "expo-router";
+import { useState } from "react";
+import { AuthProvider, useAuth } from "../config/authcontext.config";
 
-
-
-
-
-export default function RootLayout() {
-
+function Layout() {
   return (
-    <AuthProvider>
-      <Stack>
-        <Stack.Screen
+    <Stack>
+      <Stack.Screen
         name="(tabs)"
         options={{
-          headerShown:false,
-          title:"tabs"
+          headerShown: false,
+          title: "tabs"
         }}
       />
-     
+
       <Stack.Screen
         name="index"
         options={{
-          title:"signin",
-          headerShown:false
-        }}/>
-      
-   
+          title: "signin",
+          headerShown: false
+        }} />
+
+
       <Stack.Screen
         name="signup"
         options={{
-          title:"signup",
-          headerShown:false
-        }}/>
-      
-        <Stack.Screen
+          title: "signup",
+          headerShown: false
+        }} />
+
+      <Stack.Screen
         name="(chat)/[id]"
         options={{
-          title:"chat id",
-          headerShown:false
-        }}/>
+          title: "chat id",
+          headerShown: false
+        }} />
 
-      </Stack>
+    </Stack>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <Layout />
     </AuthProvider>
   )
 }

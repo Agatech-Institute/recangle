@@ -11,7 +11,7 @@ export default function Layout(){
 
     const {user,isloading} = useAuth();
     
-    if(isloading){
+    if(isloading && !user){
         return <ActivityIndicator size={"large"} color={"black"}  style={{flex:1,justifyContent:"center",alignItems:"center"}}/>
     }
     if(!user){

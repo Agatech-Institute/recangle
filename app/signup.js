@@ -52,6 +52,7 @@ export default function SignUp() {
           const { success, error } = await signUp(values);
           if (!success) {
             Alert.alert("Signup failed!", error || "Please try again");
+            console.error("Signup error:", error);
             setisLoading(false);
             return;
           }
@@ -103,14 +104,14 @@ export default function SignUp() {
               <View style={appStyles.line}></View>
             </View>
 
-            <View style={{gap:10,backgroundColor:apptheme.blue,shadowColor:apptheme.teal,borderRadius:17}}>
+            <View style={{paddingTop:10,paddingHorizontal:50,gap:10,backgroundColor:apptheme.blue,shadowColor:apptheme.teal,borderRadius:19,shadowOffset:{height:0.5,width:8},elevation:0.5}}>
                 
               <View style={appStyles.inputView}>
                 <TextInput
                   keyboardType="default"
                   style={appStyles.inputText}
                   placeholder=" e.g Boma Jaja"
-                  placeholderTextColor="#888"
+                  placeholderTextColor="#ffffff"
                   value={values.fullname}
                   onChangeText={handleChange("fullname")}
                   onBlur={handleBlur("fullname")}
@@ -121,7 +122,7 @@ export default function SignUp() {
                   keyboardType="default"
                   style={appStyles.inputText}
                   placeholder="e.g @bigbee"
-                  placeholderTextColor="#888"
+                  placeholderTextColor="#ffffff"
                   value={values.username}
                   onChangeText={handleChange("username")}
                   onBlur={handleBlur("username")}
@@ -149,8 +150,13 @@ export default function SignUp() {
                 <TextInput
                   keyboardType="email-address"
                   style={appStyles.inputText}
+<<<<<<< HEAD
                   placeholder="e.g example@gmail.com"
                   placeholderTextColor="#888"
+=======
+                  placeholder="eg. example@gmail.com"
+                  placeholderTextColor="#ffffff"
+>>>>>>> dantest
                   value={values.email}
                   onChangeText={handleChange("email")}
                   onBlur={handleBlur("email")}
@@ -166,7 +172,7 @@ export default function SignUp() {
                     secureTextEntry={!showPassword}
                     keyboardType="default"
                     placeholder=" Create Password"
-                    placeholderTextColor="#888"
+                    placeholderTextColor="#ffffff"
                     style={appStyles.inputpass}
                     value={values.password}
                     onChangeText={handleChange("password")}
@@ -190,7 +196,7 @@ export default function SignUp() {
                   <TextInput
                     style={appStyles.inputpass}
                     placeholder="Confirm Password"
-                    placeholderTextColor="#888"
+                    placeholderTextColor="#ffffff"
                     keyboardType="default"
                     secureTextEntry={!showcomPassword}
                     value={values.passwordConfirmation}
@@ -221,7 +227,7 @@ export default function SignUp() {
                     style={appStyles.loginBtn}
                   >
                     {isLoading ? (
-                      <ActivityIndicator size="small" color="white" />
+                      <ActivityIndicator size="large" color={apptheme.teal} />
                     ) : (
                       <Text style={appStyles.loginText}>Create Account</Text>
                     )}

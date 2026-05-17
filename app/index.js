@@ -1,3 +1,4 @@
+import { MaterialIcons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useState } from "react";
@@ -15,8 +16,8 @@ import {
 } from "react-native";
 import { useAuth } from "../config/authcontext.config";
 import { auth } from "../config/firebase.config";
-import { appStyles } from "../utilities/mystyles";
 import { apptheme } from "../utilities/appcolors";
+import { appStyles } from "../utilities/mystyles";
 
 export default function Signin() {
   const { login, resendVerificationEmail, logout } = useAuth();
@@ -114,11 +115,11 @@ export default function Signin() {
           <Text style={appStyles.orText}>OR</Text>
           <View style={appStyles.line}></View>
         </View>
-        <View style={{gap:10,backgroundColor:apptheme.blue,shadowColor:apptheme.teal,borderRadius:17}}>
-          <View>
+        <View style={{ paddingHorizontal: 20 }}>
+          <View style={{ paddingTop: 10, paddingHorizontal: 50, gap: 10, backgroundColor: apptheme.blue, shadowColor: apptheme.teal, borderRadius: 19, shadowOffset: { height: 0.5, width: 8 }, elevation: 0.5 }}>
             <View style={appStyles.inputView}>
               <TextInput
-                placeholderTextColor="#888"
+                placeholderTextColor="#ffffff"
                 keyboardType="email-address"
                 style={appStyles.inputText}
                 placeholder="enter your email"
@@ -127,32 +128,43 @@ export default function Signin() {
               />
             </View>
             <View style={appStyles.inputView}>
-              <TextInput
-                placeholderTextColor="#888"
-                secureTextEntry={true}
-                keyboardType="default"
-                style={appStyles.inputText}
-                placeholder="password"
-                value={password}
-                onChangeText={setPassword}
-              />
+              <View style={appStyles.eye}>
+                <TextInput
+                  placeholderTextColor="#ffffff"
+                  secureTextEntry={!showpassword}
+                  keyboardType="default"
+                  style={appStyles.inputpass}
+                  placeholder="password"
+                  value={password}
+                  onChangeText={setPassword}
+                />
+                <TouchableOpacity onPress={() => setShowpassword(!showpassword)}>
+                  <MaterialIcons
+                    name={showpassword ? "visibility" : "visibility-off"}
+                    size={24}
+                    color={apptheme.teal}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-          <View style={appStyles.opc}>
-            <TouchableOpacity onPress={handleLogin} style={appStyles.loginBtn}>
-              {isloading ? (
-                <ActivityIndicator size="small" color="red" />
-              ) : (
-                <Text style={appStyles.loginText}>LOG IN</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-          <View style={appStyles.newHere}>
-            <Link href={"/signup"}>
-              <Text style={appStyles.newHereText}>
-                New here ?? Create account
-              </Text>
-            </Link>
+
+            <View style={{ paddingHorizontal: 10, }}>
+              <TouchableOpacity onPress={handleLogin} style={appStyles.loginBtn}>
+                {isloading ? (
+                  <ActivityIndicator size="small" color={apptheme.teal}/>
+                ) : (
+                  <Text style={appStyles.loginText}>LOG IN</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <View style={appStyles.newHere}>
+              <Text style={appStyles.newHereText}>New here ?? </Text>
+              <Link href={"/signup"} style={appStyles.newHereText}>
+                Create account
+              </Link>
+            </View>
+
           </View>
         </View>
       </ScrollView>

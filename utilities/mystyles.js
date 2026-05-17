@@ -42,7 +42,9 @@ export const appStyles = StyleSheet.create({
     inputpass: {
         height: 50,
         flex: 1,
-        paddingVertical: 3
+        paddingVertical: 3,
+        color:"white"
+
     },
     // border around the text input field
     inputText: {
@@ -92,7 +94,7 @@ export const appStyles = StyleSheet.create({
         fontSize: 19,
         fontWeight: "700",
         fontFamily: "MoistlyVengionsDemo-Regular",
-        color: "white"
+        color: apptheme.navy
     },
     orSec: {
         display: "flex",

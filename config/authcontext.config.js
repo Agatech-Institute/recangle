@@ -1,126 +1,168 @@
-import { createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, sendEmailVerification } from 'firebase/auth';
-import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore';
-import { createContext, useContext, useEffect, useState } from 'react';
-import { Alert } from 'react-native';
+import { useRouter } from "expo-router";
+import {
+    createUserWithEmailAndPassword,
+    signOut as firebaseSignOut,
+    onAuthStateChanged,
+    sendEmailVerification,
+} from "firebase/auth";
+import {
+    collection,
+    doc,
+    getDocs,
+    onSnapshot,
+    query,
+    setDoc,
+    where,
+} from "firebase/firestore";
+import { createContext, useContext, useEffect, useState } from "react";
+import { Alert } from "react-native";
 import { db, auth as firebaseAuth } from "../config/firebase.config";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
+  const router = useRouter();
 
-    const [user, setUser] = useState(null);
-    const [isloading, setIsLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [isloading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        const config = onAuthStateChanged(firebaseAuth, async (user) => {
-            if (user) {
-                // Fetch user data from Firestore to get username
-                try {
-                    const userDocRef = doc(db, 'users', user.uid);
-                    const userDoc = await getDoc(userDocRef);
+  useEffect(() => {
+    let unsubscribeUser;
 
-                    if (userDoc.exists()) {
-                        const userData = userDoc.data();
-                        setUser({
-                            uid: user.uid,
-                            email: user.email,
-                            emailVerified: user.emailVerified,
-                            username: userData.username || '',
-                            messagesSent: userData.messagesSent || 0,
-                            createdAt: userData.createdAt ? userData.createdAt.toDate() : new Date(),
-                        });
-                    } else {
-                        setUser({
-                            uid: user.uid,
-                            email: user.email,
-                            emailVerified: user.emailVerified,
-                            username: ''
-                        });
-                    }
-                } catch (error) {
-                    Alert.alert('Error fetching user data:', error);
-                }
+    const unsubscribeAuth = onAuthStateChanged(firebaseAuth, async (user) => {
+      if (user) {
+        // Subscribe to user data in Firestore
+        const userDocRef = doc(db, "users", user.uid);
+
+        unsubscribeUser = onSnapshot(
+          userDocRef,
+          (doc) => {
+            if (doc.exists()) {
+              const userData = doc.data();
+              setUser({
+                uid: user.uid,
+                email: user.email,
+                emailVerified: user.emailVerified,
+                ...userData,
+                createdAt: userData.createdAt?.toDate?.() || new Date(),
+              });
             } else {
-                setUser(null)
+              // Fallback if doc doesn't exist yet but auth does
+              setUser({
+                uid: user.uid,
+                email: user.email,
+                emailVerified: user.emailVerified,
+              });
             }
             setIsLoading(false);
-        })
-        return () => config();
-    }, [])
-
-    // signUp (exposed as `signUp` to match callers)
-    const signUp = async ({ email, password, username }) => {
-        let user;
-        try {
-            // Check if username is already taken
-            const usersRef = collection(db, 'users');
-            const q = query(usersRef, where('username', '==', username));
-            const querySnapshot = await getDocs(q);
-
-            if (!querySnapshot.empty) {
-                return { success: false, error: "Username already taken." };
-            }
-
-            const response = await createUserWithEmailAndPassword(firebaseAuth, email, password);
-            user = response.user;
-
-            await setDoc(doc(db, 'users', user.uid), {
-                uid: user.uid,
-                username: username,
-                email: email,
-                messagesSent: 0,
-                createdAt: new Date()
-            });
-
-            // Send verification email
-            await sendEmailVerification(user);
-
-            return { success: true, user: user };
-        } catch (error) {
-            // Alert.alert('Signup error', error.message); // Let the component handle the alert
-            return { success: false, error: error.message };
+          },
+          (error) => {
+            console.error("Error listening to user data:", error);
+            setIsLoading(false);
+          },
+        );
+      } else {
+        setUser(null);
+        setIsLoading(false);
+        if (unsubscribeUser) {
+          unsubscribeUser();
         }
+      }
+    });
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeUser) {
+        unsubscribeUser();
+      }
     };
+  }, []);
 
-    // login
-    const login = async (userData) => {
-        setUser(userData)
+  // signUp (exposed as `signUp` to match callers)
+  const signUp = async ({ email, password, username }) => {
+    let user;
+    try {
+      // Check if username is already taken
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("username", "==", username));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        return { success: false, error: "Username already taken." };
+      }
+
+      const response = await createUserWithEmailAndPassword(
+        firebaseAuth,
+        email,
+        password,
+      );
+      user = response.user;
+
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        username: username,
+        email: email,
+        messagesSent: 0,
+        createdAt: new Date(),
+      });
+
+      // Send verification email
+      await sendEmailVerification(user);
+      return { success: true, user: user };
+    } catch (error) {
+      // Alert.alert('Signup error', error.message); // Let the component handle the alert
+      return { success: false, error: error.message };
     }
+  };
 
-    const logout = async () => {
-        try {
-            await firebaseSignOut(firebaseAuth)
-        } catch (error) {
-            Alert.alert("an error occured", "signout failed")
-        }
+  // login
+  const login = async (userData) => {
+    setUser(userData);
+  };
+
+  const logout = async () => {
+    try {
+      await firebaseSignOut(firebaseAuth);
+      setUser(null); // Clear user state after logout
+    } catch (error) {
+      Alert.alert("An error occurred", "Signout failed");
     }
+  };
 
-    const resendVerificationEmail = async () => {
-        if (firebaseAuth.currentUser) {
-            try {
-                await sendEmailVerification(firebaseAuth.currentUser);
-                return { success: true };
-            } catch (error) {
-                return { success: false, error: error.message };
-            }
-        }
-        return { success: false, error: "No user logged in" };
-    };
+  const resendVerificationEmail = async () => {
+    if (firebaseAuth.currentUser) {
+      try {
+        await sendEmailVerification(firebaseAuth.currentUser);
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    }
+    return { success: false, error: "No user logged in" };
+  };
 
-    return (
-        <AuthContext.Provider value={{ user, isloading, signUp, login, logout, resendVerificationEmail }}>
-            {children}
-        </AuthContext.Provider>
-    )
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        isloading,
+        signUp,
+        login,
+        logout,
+        resendVerificationEmail,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error("useAuth must be used within an AuthProvider")
-    }
-    return context;
-}
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
 
 export default AuthContext;
-
