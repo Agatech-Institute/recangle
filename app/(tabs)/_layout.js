@@ -19,7 +19,7 @@ export default function Layout(){
     }
 
     return (
-        <Tabs>
+        <Tabs >
             <Tabs.Screen
                 name="chats"
                 options={{

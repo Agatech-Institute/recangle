@@ -1,18 +1,18 @@
 import { useRouter } from "expo-router";
 import {
-    createUserWithEmailAndPassword,
-    signOut as firebaseSignOut,
-    onAuthStateChanged,
-    sendEmailVerification,
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  sendEmailVerification,
 } from "firebase/auth";
 import {
-    collection,
-    doc,
-    getDocs,
-    onSnapshot,
-    query,
-    setDoc,
-    where,
+  collection,
+  doc,
+  getDocs,
+  onSnapshot,
+  query,
+  setDoc,
+  where,
 } from "firebase/firestore";
 import { createContext, useContext, useEffect, useState } from "react";
 import { Alert } from "react-native";
@@ -108,6 +108,10 @@ export const AuthProvider = ({ children }) => {
 
       // Send verification email
       await sendEmailVerification(user);
+
+      // Redirect to login after successful signup
+      router.replace("/login");
+
       return { success: true, user: user };
     } catch (error) {
       // Alert.alert('Signup error', error.message); // Let the component handle the alert

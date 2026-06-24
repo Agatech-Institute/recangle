@@ -118,8 +118,15 @@ export default function ChatScreen() {
   const unsubscribeRef = useRef(null);
 
   useEffect(() => {
-    if (!currentUser || !id) {
-      console.warn("ChatScreen: currentUser or id is null");
+    if (!id) {
+      console.warn("ChatScreen: route id is not available");
+      setLoading(false);
+      return;
+    }
+
+    if (!currentUser) {
+      // Still waiting for authentication to complete
+      setLoading(true);
       return;
     }
 
@@ -200,7 +207,7 @@ export default function ChatScreen() {
   };
 
   const uploadAndSendImage = async (uri) => {
-    if (!chatRoomId) return;
+    if (!chatRoomId || !currentUser) return;
 
     try {
       setUploading(true);
@@ -283,7 +290,7 @@ export default function ChatScreen() {
   };
 
   const handleSendMessage = async () => {
-    if (newMessage.trim() && chatRoomId) {
+    if (newMessage.trim() && chatRoomId && currentUser) {
       const messageToSend = newMessage.trim();
       setNewMessage(""); // Clear immediately for better UX
       try {
@@ -299,6 +306,8 @@ export default function ChatScreen() {
   // Memoized render callback - strict prop comparison
   const renderItem = useCallback(
     ({ item }) => {
+      if (!currentUser) return null;
+
       if (item.type === "qr") {
         return (
           <OptimizedQRMessageBubble
@@ -316,7 +325,7 @@ export default function ChatScreen() {
         />
       );
     },
-    [currentUser.uid],
+    [currentUser, currentUser?.uid],
   );
 
   // Memoized QR reveal handler
