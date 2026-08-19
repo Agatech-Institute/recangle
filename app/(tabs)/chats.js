@@ -10,9 +10,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "../../config/authcontext.config";
+import { useAuthStore } from "../../config/useauthstore";
 import { apptheme } from "../../utilities/appcolors";
-import { getUserChats, getUserData } from "../../utilities/messageUtils";
+import {
+  getUserChats,
+  subscribeToUserData,
+} from "../../utilities/messageUtils";
 
 const ChatItem = ({ item, currentUserId, onPress }) => {
   const [otherUser, setOtherUser] = useState(null);
@@ -21,11 +24,11 @@ const ChatItem = ({ item, currentUserId, onPress }) => {
     // Get the other user's ID
     const otherUserId = item.participants.find((id) => id !== currentUserId);
 
-    if (otherUserId) {
-      getUserData(otherUserId).then((userData) => {
-        setOtherUser(userData);
-      });
-    }
+    if (!otherUserId) return;
+
+    const unsubscribe = subscribeToUserData(otherUserId, setOtherUser);
+
+    return unsubscribe;
   }, [item, currentUserId]);
 
   const formatTime = (timestamp) => {
@@ -58,14 +61,15 @@ const ChatItem = ({ item, currentUserId, onPress }) => {
       <View style={styles.avatarContainer}>
         {otherUser?.profilePicture ? (
           <Image
-            source={{ uri: otherUser.profilePicture }}
+            source={{ uri: otherUser?.profilePicture }}
             style={styles.avatar}
           />
         ) : (
           <View style={styles.avatarPlaceholder}>
+
             <Text style={styles.avatarText}>
               {otherUser?.username
-                ? otherUser.username.charAt(0).toUpperCase()
+                ? otherUser?.username.charAt(0).toUpperCase()
                 : otherUser?.email?.charAt(0).toUpperCase() || "?"}
             </Text>
           </View>
@@ -103,7 +107,7 @@ export default function Chats() {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const { user: currentUser } = useAuth();
+  const currentUser = useAuthStore((state) => state.user);
 
   useEffect(() => {
     if (!currentUser) return;

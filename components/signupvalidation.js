@@ -13,15 +13,6 @@ export const signupValidation = yup.object({
       "Password must contain at least one special character.",
     )
     .required("Password is required"),
-  passwordConfirmation: yup
-    .string()
-    .required()
-    .oneOf([yup.ref("password"), null], "Passwords must match"),
-  fullname: yup
-    .string()
-    .min(3, "Full name must be at least 3 characters")
-    .max(72, "Full name must not be more than 72 characters")
-    .required("Full name is required"),
   username: yup
     .string()
     .min(3, "Username must be at least 3 characters")

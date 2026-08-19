@@ -20,7 +20,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import OptimizedQRMessageBubble from "../../components/OptimizedQRMessageBubble";
-import { useAuth } from "../../config/authcontext.config";
 import { apptheme } from "../../utilities/appcolors";
 import {
   createOrGetChatRoom,
@@ -29,6 +28,7 @@ import {
   sendMessage,
   subscribeToMessages,
 } from "../../utilities/messageUtils";
+import { useAuthStore } from "../../config/useauthstore";
 
 const MessageBubble = memo(
   ({ message, currentUserId, onImagePress }) => {
@@ -107,15 +107,16 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [chatRoomId, setChatRoomId] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [otherUser, setOtherUser] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
   const [saving, setSaving] = useState(false);
-  const { user: currentUser } = useAuth();
+  const [loading,setLoading]=useState(false)
   const flatListRef = useRef(null);
   const router = useRouter();
   const unsubscribeRef = useRef(null);
+  const currentUser = useAuthStore((state) => state.user);
+  const isLoading =  useAuthStore((state) => state.isLoading);
 
   useEffect(() => {
     if (!id) {
@@ -298,7 +299,7 @@ export default function ChatScreen() {
       } catch (error) {
         console.error("Error sending message:", error);
         // Optional: restore text if sending failed
-        // setNewMessage(messageToSend);
+        setNewMessage(messageToSend);
       }
     }
   };
@@ -330,17 +331,17 @@ export default function ChatScreen() {
 
   // Memoized QR reveal handler
   const handleRevealQR = useCallback((messageId, isRevealed) => {
-    console.log(`QR message ${messageId} revealed: ${isRevealed}`);
+;
   }, []);
 
   // Memoized getItemLayout for constant offset calculation
-  // const getItemLayout = useCallback((data, index) => ({
-  //   length: 340,
-  //   offset: 340 * index,
-  //   index,
-  // }), []);
+  const getItemLayout = useCallback((data, index) => ({
+    length: 340,
+    offset: 340 * index,
+    index,
+  }), []);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -365,13 +366,13 @@ export default function ChatScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.replace("/(tabs)/chats")}
             style={styles.backButton}
           >
-            <MaterialIcons name="arrow-back" size={24} color="#000" />
+            <MaterialIcons name="arrow-back" size={29} color={apptheme.navy} />
             {otherUser?.profilePicture && (
               <Image
-                source={{ uri: otherUser.profilePicture }}
+                source={{ uri: otherUser?.profilePicture }}
                 style={styles.headerAvatar}
               />
             )}
@@ -381,7 +382,7 @@ export default function ChatScreen() {
               {otherUser?.username || username || "Chat"}
             </Text>
             {otherUser?.email && (
-              <Text style={styles.headerSubtitle}>{otherUser.email}</Text>
+              <Text style={styles.headerSubtitle}>{otherUser?.email}</Text>
             )}
           </View>
         </View>
@@ -393,11 +394,11 @@ export default function ChatScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           estimatedItemSize={100}
-          // getItemLayout={getItemLayout}
-          // initialNumToRender={7}
-          // windowSize={5}
-          // maxToRenderPerBatch={10}
-          // updateCellsBatchingPeriod={30}
+          getItemLayout={getItemLayout}
+          initialNumToRender={7}
+          windowSize={5}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={30}
           removeClippedSubviews={Platform.OS === "android"}
           contentContainerStyle={styles.messageList}
           onContentSizeChange={() =>
@@ -542,11 +543,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#7d0303",
+    color: apptheme.navy,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: "#666",
+    color: apptheme.navy,
     marginTop: 2,
   },
   messageList: {

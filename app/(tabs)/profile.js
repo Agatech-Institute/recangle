@@ -1,5 +1,6 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -11,8 +12,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { auth } from "../../config/firebase.config";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "../../config/authcontext.config";
+import { useAuthStore } from "../../config/useauthstore";
 import { apptheme } from "../../utilities/appcolors";
 import { getUserChats, updateUserProfile } from "../../utilities/messageUtils";
 
@@ -28,10 +30,11 @@ const SettingItem = ({ icon, title, value }) => (
 );
 
 export default function Profile() {
-  const { user, logout } = useAuth();
   const [connections, setConnections] = useState(0);
   const [uploading, setUploading] = useState(false);
-  const { currentUser, setCurrentUser } = useState();
+  const router = useRouter();
+  const currentUser = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
 
   const pickImage = async () => {
     try {
@@ -46,11 +49,17 @@ export default function Profile() {
         await uploadImage(result.assets[0].uri);
       }
     } catch (error) {
+      console.error("Error picking image:", error);
       Alert.alert("Error", "Failed to pick image");
     }
   };
 
   const uploadImage = async (uri) => {
+    const userId = currentUser?.uid || auth.currentUser?.uid;
+    if (!currentUser?.uid) {
+      Alert.alert("Error", "User session not found. Please log in again.");
+      return;
+    }
     try {
       setUploading(true);
       const formData = new FormData();
@@ -73,7 +82,9 @@ export default function Profile() {
       const data = await response.json();
 
       if (data.secure_url) {
-        await updateUserProfile(user.uid, { profilePicture: data.secure_url });
+        await updateUserProfile(userId, {
+          profilePicture: data.secure_url,
+        });
         Alert.alert("Success", "Profile picture updated!");
       } else {
         throw new Error("Upload failed");
@@ -87,19 +98,20 @@ export default function Profile() {
   };
 
   useEffect(() => {
-    if (user?.uid) {
-      const unsubscribe = getUserChats(user.uid, (chats) => {
+    if (currentUser?.uid) {
+      const unsubscribe = getUserChats(currentUser.uid, (chats) => {
         setConnections(chats.length);
       });
       return () => unsubscribe();
     }
-  }, [user?.uid]);
+  }, [currentUser?.uid]);
 
-  const handleSignout = async () => {
+  const handleLogout = async () => {
     try {
       await logout();
+      router.replace("/");
     } catch (error) {
-      Alert.alert("an error occued loging out", "might be network", error);
+      Alert.alert("Logout Error", error.message || "Failed to log out");
     }
   };
 
@@ -109,7 +121,7 @@ export default function Profile() {
     return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
   };
 
-  if (!user) {
+  if (!currentUser) {
     return (
       <SafeAreaProvider>
         <SafeAreaView style={styles.container}>
@@ -125,9 +137,9 @@ export default function Profile() {
         <ScrollView>
           <View style={styles.header}>
             <TouchableOpacity onPress={pickImage} disabled={uploading}>
-              {user?.profilePicture ? (
+              {currentUser?.profilePicture ? (
                 <Image
-                  source={{ uri: user.profilePicture }}
+                  source={{ uri: currentUser?.profilePicture }}
                   style={styles.avatar}
                 />
               ) : (
@@ -147,7 +159,9 @@ export default function Profile() {
             {/* <Text style={styles.name}>
               {user?.email?.split("@")[0] || "User"}
             </Text> */}
-            <Text style={styles.username}>{user?.username || "@username".toUpperCase()}</Text>
+            <Text style={styles.username}>
+              {currentUser?.username || "@username".toUpperCase()}
+            </Text>
             <Text style={styles.bio}>
               Software Developer | Disc Jockey | Travel Enthusiast
             </Text>
@@ -159,7 +173,9 @@ export default function Profile() {
 
           <View style={styles.stats}>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{user?.messagesSent || 0}</Text>
+              <Text style={styles.statNumber}>
+                {currentUser?.messagesSent || 0}
+              </Text>
               <Text style={styles.statLabel}>Messages</Text>
             </View>
             <View style={styles.statDivider} />
@@ -171,7 +187,7 @@ export default function Profile() {
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Joined</Text>
               <Text style={styles.statValue}>
-                {formatDateJoined(user?.createdAt)}
+                {formatDateJoined(currentUser?.createdAt)}
               </Text>
             </View>
           </View>
@@ -184,7 +200,7 @@ export default function Profile() {
             <SettingItem icon="info" title="About" />
           </View>
 
-          <TouchableOpacity onPress={handleSignout} style={styles.logoutButton}>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
             <MaterialIcons name="logout" size={24} color="#FF3B30" />
             <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>

@@ -1,6 +1,5 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
-import { signInWithEmailAndPassword } from "firebase/auth";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -8,83 +7,51 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { useAuth } from "../config/authcontext.config";
-import { auth } from "../config/firebase.config";
 import { apptheme } from "../utilities/appcolors";
 import { appStyles } from "../utilities/mystyles";
+import { useFormik } from "formik";
+import { useAuthStore } from "@/config/useauthstore";
+import { ALWAYS } from "expo-secure-store";
 
 export default function Signin() {
-  const { login, resendVerificationEmail, logout } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isloading, setIsLoading] = useState(false);
+ const login = useAuthStore((state) => state.login);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const resetpassword = useAuthStore((state) => state.resetpassword)
   const [showpassword, setShowpassword] = useState(false);
   const router = useRouter();
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password,
-      );
-      const user = userCredential.user;
+ const { handleChange, handleSubmit, touched, errors, values } =
+    useFormik({
+      initialValues: {
+        email: "",
+        password:"",
+        username:""
+        
+      },
+      onSubmit: async (values) => {
+        try {
+         await login(values.email,values.password)
+         router.replace("/(tabs)/chats")
+          }
+      
+        catch (error) {
+          Alert.alert("Sign in error",error.message)
+         
+        }
+      },
+      
+    });
 
-      if (!user.emailVerified) {
-        Alert.alert(
-          "Email not verified",
-          "Please verify your email address before logging in. Check your inbox for the verification link.",
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Resend Email",
-              onPress: async () => {
-                const result = await resendVerificationEmail();
-                if (result.success) {
-                  Alert.alert("Success", "Verification email sent!");
-                } else {
-                  Alert.alert("Error", result.error);
-                }
-              },
-            },
-          ],
-        );
-        await logout(); // Sign out since they are not verified
-        setIsLoading(false);
-        return;
-      }
+    
 
-      await login({
-        uid: user.uid,
-        email: user.email,
-      });
-      router.replace("/(tabs)/chats");
-      setIsLoading(false);
-    } catch (error) {
-      Alert.alert("Login failed", error.message);
-      setIsLoading(false);
-    }
-  };
-  //      const [fontsLoaded] = useFonts({
-  //     "Lemoncake Homemade":require("../assets/images/fonts/Lemoncake Homemade.ttf"),
-  //     "MoistlyVengionsDemo-Regular":require("../assets/images/fonts/MoistlyVengionsDemo-Regular.otf"),
 
-  //   });
-
-  //   if (!fontsLoaded){
-  //     return null
-  //   };
   return (
     <KeyboardAvoidingView
       style={appStyles.wrapper}
@@ -116,15 +83,26 @@ export default function Signin() {
           <View style={appStyles.line}></View>
         </View>
         <View style={{ paddingHorizontal: 20 }}>
-          <View style={{ paddingTop: 10, paddingHorizontal: 50, gap: 10, backgroundColor: apptheme.blue, shadowColor: apptheme.teal, borderRadius: 19, shadowOffset: { height: 0.5, width: 8 }, elevation: 0.5 }}>
+          <View
+            style={{
+              paddingTop: 10,
+              paddingHorizontal: 50,
+              gap: 10,
+              backgroundColor: apptheme.blue,
+              shadowColor: apptheme.teal,
+              borderRadius: 19,
+              shadowOffset: { height: 0.5, width: 8 },
+              elevation: 0.5,
+            }}
+          >
             <View style={appStyles.inputView}>
               <TextInput
                 placeholderTextColor="#ffffff"
                 keyboardType="email-address"
                 style={appStyles.inputText}
                 placeholder="enter your email"
-                value={email}
-                onChangeText={setEmail}
+                value={values.email}
+                onChangeText={handleChange("email")}
               />
             </View>
             <View style={appStyles.inputView}>
@@ -135,10 +113,12 @@ export default function Signin() {
                   keyboardType="default"
                   style={appStyles.inputpass}
                   placeholder="password"
-                  value={password}
-                  onChangeText={setPassword}
+                  value={values.password}
+                  onChangeText={handleChange("password")}
                 />
-                <TouchableOpacity onPress={() => setShowpassword(!showpassword)}>
+                <TouchableOpacity
+                  onPress={() => setShowpassword(!showpassword)}
+                >
                   <MaterialIcons
                     name={showpassword ? "visibility" : "visibility-off"}
                     size={24}
@@ -148,10 +128,13 @@ export default function Signin() {
               </View>
             </View>
 
-            <View style={{ paddingHorizontal: 10, }}>
-              <TouchableOpacity onPress={handleLogin} style={appStyles.loginBtn}>
-                {isloading ? (
-                  <ActivityIndicator size="small" color={apptheme.teal}/>
+            <View style={{ paddingHorizontal: 10 }}>
+              <TouchableOpacity
+                onPress={handleSubmit}
+                style={appStyles.loginBtn}
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color={apptheme.teal} />
                 ) : (
                   <Text style={appStyles.loginText}>LOG IN</Text>
                 )}
@@ -160,11 +143,15 @@ export default function Signin() {
 
             <View style={appStyles.newHere}>
               <Text style={appStyles.newHereText}>New here ?? </Text>
+             
               <Link href={"/signup"} style={appStyles.newHereText}>
                 Create account
               </Link>
+              
             </View>
-
+             <Link href={"/passwordreset"}  style={appStyles.newHere}>
+                <Text style={{}}>Forgotten passwprd? reset here</Text>
+             </Link>
           </View>
         </View>
       </ScrollView>

@@ -3,9 +3,9 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from '../../config/authcontext.config';
 import { apptheme } from '../../utilities/appcolors';
 import { getAllUsers } from '../../utilities/messageUtils';
+import { useAuthStore } from '../../config/useauthstore';
 
 const UserItem = ({ user, onPress }) => (
   <TouchableOpacity style={styles.userItem} onPress={onPress}>
@@ -33,7 +33,9 @@ export default function Users() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const { user: currentUser } = useAuth();
+  
+const currentUser = useAuthStore((state) => state.user);
+
 
   useEffect(() => {
     fetchUsers();
@@ -54,7 +56,7 @@ export default function Users() {
     }
   };
 
-  const filteredUsers = searchQuery.trim() === '' ? [] : users.filter(user =>
+  const filteredUsers = searchQuery.trim() === '' ? users : users.filter(user =>
     (user.username && user.username.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase()))
   );
