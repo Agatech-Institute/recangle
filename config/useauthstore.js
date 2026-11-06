@@ -1,11 +1,13 @@
 import * as SecureStore from "expo-secure-store";
 import {
   createUserWithEmailAndPassword,
+  onAuthStateChanged,
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithCredential,
   signOut,
-  onAuthStateChanged,
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { create } from "zustand";
@@ -28,7 +30,7 @@ export const useAuthStore = create((set) => ({
         });
         return;
       }
-      
+
       if (!firebaseUser.emailVerified) {
         set({ user: null, isAuthenticated: false, isInitializing: false });
         return;
@@ -41,8 +43,12 @@ export const useAuthStore = create((set) => ({
         console.log("jchhf", userDoc);
 
         const userData = userDoc.exists()
-          ? { id: firebaseUser.uid, ...userDoc.data() }
-          : { id: firebaseUser.uid, email: firebaseUser.email };
+          ? { id: firebaseUser.uid, uid: firebaseUser.uid, ...userDoc.data() }
+          : {
+              id: firebaseUser.uid,
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+            };
 
         set({
           user: userData,
@@ -52,7 +58,11 @@ export const useAuthStore = create((set) => ({
       } catch (error) {
         console.error("Error fetching user profile:", error);
         set({
-          user: { id: firebaseUser.uid, email: firebaseUser.email },
+          user: {
+            id: firebaseUser.uid,
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+          },
           isAuthenticated: true,
           isInitializing: false,
         });
@@ -99,6 +109,59 @@ export const useAuthStore = create((set) => ({
       if (userDoc.exists()) {
         userData = { ...userData, ...userDoc.data() };
       }
+
+      set({
+        user: userData,
+        isAuthenticated: true,
+        authErorr: null,
+        isLoading: false,
+      });
+    } catch (error) {
+      set({
+        authErorr: error.message,
+        isLoading: false,
+      });
+      throw error;
+    }
+  },
+
+  loginWithGoogle: async (idToken) => {
+    set({
+      isLoading: true,
+      authErorr: null,
+    });
+    try {
+      const credential = GoogleAuthProvider.credential(idToken);
+      const userCred = await signInWithCredential(auth, credential);
+      const firebaseUser = userCred.user;
+      const userDocRef = doc(db, "users", firebaseUser.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      const userData = userDoc.exists()
+        ? {
+            id: firebaseUser.uid,
+            uid: firebaseUser.uid,
+            ...userDoc.data(),
+          }
+        : {
+            id: firebaseUser.uid,
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            username:
+              firebaseUser.displayName ||
+              firebaseUser.email?.split("@")[0] ||
+              "user",
+            profilePicture: firebaseUser.photoURL || "",
+            messagesSent: 0,
+            createdAt: new Date().toISOString(),
+          };
+
+      if (!userDoc.exists()) {
+        await setDoc(userDocRef, userData);
+      }
+
+      const token = await firebaseUser.getIdToken();
+      await SecureStore.setItemAsync("userToken", token);
 
       set({
         user: userData,

@@ -7,27 +7,61 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { apptheme } from "../utilities/appcolors";
 import { appStyles } from "../utilities/mystyles";
 import { useFormik } from "formik";
 import { useAuthStore } from "@/config/useauthstore";
-import { ALWAYS } from "expo-secure-store";
+
+GoogleSignin.configure({
+  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  offlineAccess: true,
+});
 
 export default function Signin() {
- const login = useAuthStore((state) => state.login);
+  const login = useAuthStore((state) => state.login);
+  const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
   const isLoading = useAuthStore((state) => state.isLoading);
-  const resetpassword = useAuthStore((state) => state.resetpassword)
   const [showpassword, setShowpassword] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const router = useRouter();
 
- const { handleChange, handleSubmit, touched, errors, values } =
+  const handleGoogleSignIn = async () => {
+    if (!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) {
+      Alert.alert(
+        "Google sign in is not configured",
+        "Set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in your environment.",
+      );
+      return;
+    }
+
+    setIsGoogleLoading(true);
+    try {
+      await GoogleSignin.hasPlayServices();
+      const result = await GoogleSignin.signIn();
+      if (result.type !== "success") return;
+
+      const idToken = result.data.idToken;
+      if (!idToken) {
+        throw new Error("Google did not return an ID token.");
+      }
+
+      await loginWithGoogle(idToken);
+      router.replace("/(tabs)/chats");
+    } catch (error) {
+      Alert.alert("Google sign in error", error.message);
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+ const { handleChange, handleSubmit, values } =
     useFormik({
       initialValues: {
         email: "",
@@ -66,15 +100,25 @@ export default function Signin() {
           />
         </View>
         <View style={appStyles.googleSEC}>
-          <TouchableOpacity style={appStyles.loginBtn}>
-            <Image
-              style={{
-                width: 36,
-                height: 36,
-              }}
-              source={require("../assets/images/google.png")}
-            ></Image>
-            <Text style={appStyles.loginText}>Google</Text>
+          <TouchableOpacity
+            style={appStyles.loginBtn}
+            onPress={handleGoogleSignIn}
+            disabled={isLoading || isGoogleLoading}
+          >
+            {isGoogleLoading ? (
+              <ActivityIndicator size="small" color={apptheme.teal} />
+            ) : (
+              <>
+                <Image
+                  style={{
+                    width: 36,
+                    height: 36,
+                  }}
+                  source={require("../assets/images/google.png")}
+                />
+                <Text style={appStyles.loginText}>Google</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
         <View style={appStyles.orSec}>

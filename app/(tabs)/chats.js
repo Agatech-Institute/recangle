@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   StyleSheet,
@@ -13,11 +14,12 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../../config/useauthstore";
 import { apptheme } from "../../utilities/appcolors";
 import {
+  deleteChatRoom,
   getUserChats,
   subscribeToUserData,
 } from "../../utilities/messageUtils";
 
-const ChatItem = ({ item, currentUserId, onPress }) => {
+const ChatItem = ({ item, currentUserId, onPress, onLongPress }) => {
   const [otherUser, setOtherUser] = useState(null);
 
   useEffect(() => {
@@ -57,7 +59,12 @@ const ChatItem = ({ item, currentUserId, onPress }) => {
   const unreadCount = item.unreadCount?.[currentUserId] || 0;
 
   return (
-    <TouchableOpacity style={styles.chatItem} onPress={onPress}>
+    <TouchableOpacity
+      style={styles.chatItem}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={500}
+    >
       <View style={styles.avatarContainer}>
         {otherUser?.profilePicture ? (
           <Image
@@ -66,7 +73,6 @@ const ChatItem = ({ item, currentUserId, onPress }) => {
           />
         ) : (
           <View style={styles.avatarPlaceholder}>
-
             <Text style={styles.avatarText}>
               {otherUser?.username
                 ? otherUser?.username.charAt(0).toUpperCase()
@@ -135,6 +141,24 @@ export default function Chats() {
     });
   };
 
+  const handleChatLongPress = (chat) => {
+    Alert.alert("Delete chat?", "Delete this chat and all its messages?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deleteChatRoom(chat.id);
+          } catch (error) {
+            console.error("Error deleting chat:", error);
+            Alert.alert("Error", "Could not delete this chat.");
+          }
+        },
+      },
+    ]);
+  };
+
   if (loading) {
     return (
       <SafeAreaProvider>
@@ -159,6 +183,7 @@ export default function Chats() {
               item={item}
               currentUserId={currentUser.uid}
               onPress={() => handleChatPress(item)}
+              onLongPress={() => handleChatLongPress(item)}
             />
           )}
           ItemSeparatorComponent={() => <View style={styles.separator} />}

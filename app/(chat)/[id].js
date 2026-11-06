@@ -1,5 +1,6 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { FlashList } from "@shopify/flash-list";
+import { Audio } from "expo-av";
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
@@ -20,15 +21,15 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import OptimizedQRMessageBubble from "../../components/OptimizedQRMessageBubble";
+import { useAuthStore } from "../../config/useauthstore";
 import { apptheme } from "../../utilities/appcolors";
 import {
   createOrGetChatRoom,
-  getUserData,
   markMessagesAsRead,
   sendMessage,
   subscribeToMessages,
+  subscribeToUserData,
 } from "../../utilities/messageUtils";
-import { useAuthStore } from "../../config/useauthstore";
 
 const MessageBubble = memo(
   ({ message, currentUserId, onImagePress }) => {
@@ -111,12 +112,42 @@ export default function ChatScreen() {
   const [otherUser, setOtherUser] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [loading,setLoading]=useState(false)
+  const [loading, setLoading] = useState(false);
   const flatListRef = useRef(null);
+  const messageIdsRef = useRef(new Set());
+  const hasLoadedMessagesRef = useRef(false);
+  const isScreenActiveRef = useRef(true);
+  const soundRefs = useRef(new Set());
   const router = useRouter();
   const unsubscribeRef = useRef(null);
   const currentUser = useAuthStore((state) => state.user);
-  const isLoading =  useAuthStore((state) => state.isLoading);
+  const isLoading = useAuthStore((state) => state.isLoading);
+
+  const playPopSound = useCallback(async () => {
+    if (!isScreenActiveRef.current) return;
+
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require("../sound/pop.mp3"),
+        { shouldPlay: true },
+      );
+
+      if (!isScreenActiveRef.current) {
+        await sound.unloadAsync();
+        return;
+      }
+
+      soundRefs.current.add(sound);
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.didJustFinish) {
+          sound.unloadAsync().catch(() => {});
+          soundRefs.current.delete(sound);
+        }
+      });
+    } catch (error) {
+      console.error("Error playing message sound:", error);
+    }
+  }, []);
 
   useEffect(() => {
     if (!id) {
@@ -132,6 +163,7 @@ export default function ChatScreen() {
     }
 
     let isMounted = true;
+    isScreenActiveRef.current = true;
 
     initializeChat().then((unsubscribe) => {
       if (isMounted && unsubscribe) {
@@ -141,6 +173,11 @@ export default function ChatScreen() {
 
     return () => {
       isMounted = false;
+      isScreenActiveRef.current = false;
+      soundRefs.current.forEach((sound) => {
+        sound.unloadAsync().catch(() => {});
+      });
+      soundRefs.current.clear();
       if (
         unsubscribeRef.current &&
         typeof unsubscribeRef.current === "function"
@@ -150,6 +187,11 @@ export default function ChatScreen() {
       }
     };
   }, [currentUser, id]);
+
+  useEffect(() => {
+    if (!id) return;
+    return subscribeToUserData(id, setOtherUser);
+  }, [id]);
 
   const initializeChat = async () => {
     if (!currentUser) {
@@ -165,12 +207,21 @@ export default function ChatScreen() {
       const roomId = await createOrGetChatRoom(currentUser.uid, id);
       setChatRoomId(roomId);
 
-      // Get other user's data
-      const userData = await getUserData(id);
-      setOtherUser(userData);
-
       // Subscribe to messages
+      messageIdsRef.current.clear();
+      hasLoadedMessagesRef.current = false;
       const unsubscribe = subscribeToMessages(roomId, (newMessages) => {
+        if (hasLoadedMessagesRef.current) {
+          newMessages.forEach((message) => {
+            if (!messageIdsRef.current.has(message.id)) {
+              playPopSound();
+            }
+          });
+        } else {
+          hasLoadedMessagesRef.current = true;
+        }
+
+        newMessages.forEach((message) => messageIdsRef.current.add(message.id));
         setMessages(newMessages);
         // Scroll to bottom when new messages arrive
         setTimeout(() => {
@@ -187,6 +238,13 @@ export default function ChatScreen() {
     } catch (error) {
       console.error("Error initializing chat:", error);
       setLoading(false);
+      if (error.message === "You must be friends before starting a chat") {
+        Alert.alert(
+          "Friends only",
+          "Accept the friend request before chatting.",
+          [{ text: "OK", onPress: () => router.back() }],
+        );
+      }
     }
   };
 
@@ -330,16 +388,17 @@ export default function ChatScreen() {
   );
 
   // Memoized QR reveal handler
-  const handleRevealQR = useCallback((messageId, isRevealed) => {
-;
-  }, []);
+  const handleRevealQR = useCallback((messageId, isRevealed) => {}, []);
 
   // Memoized getItemLayout for constant offset calculation
-  const getItemLayout = useCallback((data, index) => ({
-    length: 340,
-    offset: 340 * index,
-    index,
-  }), []);
+  const getItemLayout = useCallback(
+    (data, index) => ({
+      length: 340,
+      offset: 340 * index,
+      index,
+    }),
+    [],
+  );
 
   if (isLoading) {
     return (
@@ -381,9 +440,16 @@ export default function ChatScreen() {
             <Text style={styles.headerTitle}>
               {otherUser?.username || username || "Chat"}
             </Text>
-            {otherUser?.email && (
-              <Text style={styles.headerSubtitle}>{otherUser?.email}</Text>
-            )}
+            {otherUser?.currentTrack ? (
+              <Text style={styles.headerSubtitle} numberOfLines={1}>
+                {otherUser.currentTrack.isPlaying
+                  ? "Listening to "
+                  : "Last played "}
+                {otherUser.currentTrack.name} by {otherUser.currentTrack.artist}
+              </Text>
+            ) : otherUser?.email ? (
+              <Text style={styles.headerSubtitle}>{otherUser.email}</Text>
+            ) : null}
           </View>
         </View>
 

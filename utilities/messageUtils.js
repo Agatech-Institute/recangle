@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -12,8 +13,88 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "../config/firebase.config";
+
+const getFriendRequestId = (firstUserId, secondUserId) =>
+  [firstUserId, secondUserId].sort().join("_");
+
+export const getFriendRequests = async (userId) => {
+  const requestsRef = collection(db, "friendRequests");
+  const [sentSnapshot, receivedSnapshot] = await Promise.all([
+    getDocs(query(requestsRef, where("senderId", "==", userId))),
+    getDocs(query(requestsRef, where("recipientId", "==", userId))),
+  ]);
+  const requests = new Map();
+
+  [...sentSnapshot.docs, ...receivedSnapshot.docs].forEach((request) => {
+    requests.set(request.id, { id: request.id, ...request.data() });
+  });
+
+  return [...requests.values()];
+};
+
+export const sendFriendRequest = async (senderId, recipientId) => {
+  const requestRef = doc(
+    db,
+    "friendRequests",
+    getFriendRequestId(senderId, recipientId),
+  );
+  const requestSnapshot = await getDoc(requestRef);
+
+  if (requestSnapshot.exists()) {
+    const request = requestSnapshot.data();
+    if (request.status === "accepted") return "accepted";
+    if (request.status === "pending") return "pending";
+  }
+
+  await setDoc(requestRef, {
+    senderId,
+    recipientId,
+    status: "pending",
+    createdAt: serverTimestamp(),
+  });
+  return "pending";
+};
+
+export const acceptFriendRequest = async (requestId, userId) => {
+  const requestRef = doc(db, "friendRequests", requestId);
+  const requestSnapshot = await getDoc(requestRef);
+
+  if (!requestSnapshot.exists()) {
+    throw new Error("Friend request no longer exists");
+  }
+  if (requestSnapshot.data().recipientId !== userId) {
+    throw new Error("You cannot accept this friend request");
+  }
+
+  await updateDoc(requestRef, {
+    status: "accepted",
+    updatedAt: serverTimestamp(),
+  });
+};
+
+export const cancelFriendRequest = async (requestId, userId) => {
+  const requestRef = doc(db, "friendRequests", requestId);
+  const requestSnapshot = await getDoc(requestRef);
+
+  if (!requestSnapshot.exists()) return;
+  if (requestSnapshot.data().senderId !== userId) {
+    throw new Error("You cannot cancel this friend request");
+  }
+
+  await deleteDoc(requestRef);
+};
+
+export const areUsersFriends = async (firstUserId, secondUserId) => {
+  const requestSnapshot = await getDoc(
+    doc(db, "friendRequests", getFriendRequestId(firstUserId, secondUserId)),
+  );
+  return (
+    requestSnapshot.exists() && requestSnapshot.data().status === "accepted"
+  );
+};
 
 /**
  * Creates a new chat room or retrieves an existing one between two users
@@ -23,6 +104,10 @@ import { db } from "../config/firebase.config";
  */
 export const createOrGetChatRoom = async (currentUserId, otherUserId) => {
   try {
+    if (!(await areUsersFriends(currentUserId, otherUserId))) {
+      throw new Error("You must be friends before starting a chat");
+    }
+
     // Check if chat room already exists
     const chatsRef = collection(db, "chats");
     const q = query(
@@ -45,8 +130,16 @@ export const createOrGetChatRoom = async (currentUserId, otherUserId) => {
       return existingChatId;
     }
 
-    // Create new chat room
-    const newChatRef = await addDoc(chatsRef, {
+    // Use one stable room ID for this pair so concurrent opens cannot create duplicates.
+    const roomId = [currentUserId, otherUserId].sort().join("_");
+    const roomRef = doc(chatsRef, roomId);
+    const roomSnapshot = await getDoc(roomRef);
+
+    if (roomSnapshot.exists()) {
+      return roomSnapshot.id;
+    }
+
+    await setDoc(roomRef, {
       participants: [currentUserId, otherUserId],
       createdAt: serverTimestamp(),
       lastMessage: "",
@@ -57,11 +150,32 @@ export const createOrGetChatRoom = async (currentUserId, otherUserId) => {
       },
     });
 
-    return newChatRef.id;
+    return roomId;
   } catch (error) {
     console.error("Error creating/getting chat room:", error);
     throw error;
   }
+};
+
+/**
+ * Deletes a chat room and all messages belonging to it.
+ * @param {string} chatRoomId - Chat room ID
+ * @returns {Promise<void>}
+ */
+export const deleteChatRoom = async (chatRoomId) => {
+  if (!chatRoomId) throw new Error("Chat room ID is required");
+
+  const messagesSnapshot = await getDocs(
+    query(collection(db, "messages"), where("chatRoomId", "==", chatRoomId)),
+  );
+  const batch = writeBatch(db);
+
+  messagesSnapshot.forEach((message) => {
+    batch.delete(message.ref);
+  });
+  batch.delete(doc(db, "chats", chatRoomId));
+
+  await batch.commit();
 };
 
 /**

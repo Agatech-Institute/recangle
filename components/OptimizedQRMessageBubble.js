@@ -1,7 +1,15 @@
-import { BlurView } from 'expo-blur';
-import { memo, useCallback, useState } from 'react';
-import { Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { apptheme } from '../utilities/appcolors';
+import { BlurView } from "expo-blur";
+import { memo, useCallback, useState } from "react";
+import {
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { apptheme } from "../utilities/appcolors";
 
 /**
  * Optimized QRMessageBubble using base64 image instead of live SVG rendering
@@ -16,9 +24,12 @@ const OptimizedQRMessageBubble = memo(
 
     // Format timestamp
     const formatTime = (timestamp) => {
-      if (!timestamp) return '';
+      if (!timestamp) return "";
       const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     };
 
     // Memoized reveal handler
@@ -52,17 +63,15 @@ const OptimizedQRMessageBubble = memo(
 
               {/* Blur Overlay for Incoming Messages */}
               {!isMyMessage && (
-                <BlurView intensity={60} style={styles.blurOverlay}>
-                  <View style={styles.revealHint}>
-                    <Text style={styles.revealHintText}>Tap to reveal</Text>
-                  </View>
-                </BlurView>
+                <View style={styles.revealHint}>
+                  <Text style={styles.revealHintText}>Tap to read</Text>
+                </View>
               )}
 
               {/* Tap Hint for Own Messages */}
               {isMyMessage && (
-                <View style={styles.tapHintContainer}>
-                  <Text style={styles.tapHintText}>Tap to show text</Text>
+                <View>
+                  <Text style={styles.tapHintText}>Tap to read</Text>
                 </View>
               )}
             </View>
@@ -86,12 +95,7 @@ const OptimizedQRMessageBubble = memo(
           )}
 
           {/* Timestamp */}
-          <Text
-            style={[
-              styles.timestamp,
-              isMyMessage && styles.myTimestamp,
-            ]}
-          >
+          <Text style={[styles.timestamp, isMyMessage && styles.myTimestamp]}>
             {formatTime(message.timestamp)}
           </Text>
         </TouchableOpacity>
@@ -107,83 +111,83 @@ const OptimizedQRMessageBubble = memo(
       prevProps.message.timestamp === nextProps.message.timestamp &&
       prevProps.currentUserId === nextProps.currentUserId
     );
-  }
+  },
 );
 
-OptimizedQRMessageBubble.displayName = 'OptimizedQRMessageBubble';
+OptimizedQRMessageBubble.displayName = "OptimizedQRMessageBubble";
 
 const styles = StyleSheet.create({
   container: {
     marginVertical: 8,
     paddingHorizontal: 12,
     minHeight: 240,
-    width: '100%',
+    width: "100%",
   },
   messageBubble: {
-    maxWidth: '75%',
+    maxWidth: "75%",
     padding: 12,
     borderRadius: 16,
-    alignItems: 'center',
-    alignSelf: 'flex-start', // Default
+    alignItems: "center",
+    alignSelf: "flex-start", // Default
   },
 
   myMessage: {
     backgroundColor: apptheme.navy,
     borderBottomRightRadius: 4,
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
   },
   theirMessage: {
     backgroundColor: apptheme.teal,
     borderBottomLeftRadius: 4,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   qrContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     width: 200,
     height: 200,
-    position: 'relative',
+    position: "relative",
   },
   qrImage: {
     width: 180,
     height: 180,
   },
   blurOverlay: {
-    position: 'absolute',
+    position: "absolute",
     width: 200,
     height: 200,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderRadius: 8,
   },
   revealHint: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingVertical: 12,
-    color: "white"
+    color: "white",
   },
   revealHintText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: 'white',
-    textAlign: 'center',
+    fontWeight: "600",
+    color: "white",
+    textAlign: "center",
   },
   tapHintContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 8,
-    backgroundColor: 'rgba(255, 0, 0, 0.8)',
+    backgroundColor: "rgba(255, 0, 0, 0.8)",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
   },
   tapHintText: {
-    fontSize: 11,
-    color: '#fff',
-    fontWeight: '500',
+    fontSize: 13,
+    color: "#fff",
+    fontWeight: "500",
   },
   revealedTextContainer: {
     padding: 12,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     width: 200, // Matches qrContainer width
     maxHeight: 370,
@@ -194,22 +198,22 @@ const styles = StyleSheet.create({
   },
   revealedText: {
     fontSize: 18, // Increased from 14
-    color: '#333',
-    textAlign: 'left',
-    fontWeight: '500',
+    color: "#333",
+    textAlign: "left",
+    fontWeight: "500",
     // textAlign: "justify"
   },
   revealedTextMy: {
-    color: '#000',
+    color: "#000",
   },
   timestamp: {
     fontSize: 12,
-    color: '#999',
+    color: "#999",
     marginTop: 6,
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
   },
   myTimestamp: {
-    color: '#e3f2fd',
+    color: "#e3f2fd",
   },
 });
 
